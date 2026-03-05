@@ -1,4 +1,6 @@
 # DailyCheck-Agent
+[![CI](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/CI.yml)
+[![CodeQL](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/codeql-analysis.yml) 
 
 一个基于 GUI 的代理助手，帮助您坚持每日打卡任务。适用于追踪习惯、任务或目标，提供直观的界面和可定制的功能。
 

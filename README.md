@@ -1,5 +1,7 @@
 # DailyCheck-Agent
-
+[![CI](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/CI.yml)
+[![CodeQL](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Jiaxi-Huang/DailyCheck-Agent/actions/workflows/codeql-analysis.yml) 
+    
 A GUI-based agent to help you stay consistent with daily check-ins. Perfect for tracking habits, tasks, or goals with an intuitive interface and customizable features.
 
 **Language**: [English](README.md) | [中文](README-CN.md)

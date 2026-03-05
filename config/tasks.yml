@@ -1,0 +1,17 @@
+tasks:
+  aliyunpan_checkin:
+    name: "阿里云盘签到"
+    app: "阿里云盘"
+    steps:
+      - name: "Open folder"
+        description: "Find and tap the Cloud folder on home screen(Under 淘宝 app)"
+      - name: "Open app"
+        description: "Tap the 阿里云盘 icon"  
+      - name: "Start check-in"
+        description: "Tap the button that starts the daily check session"
+      - name: "Complete check-in"
+        description: "Tap the 领取 button at top-left region that completes the daily check session, if there is no 领取 button, see if there is a 明日可领取 button to enter next step"
+      - name: "Check result"
+        description: "Check the 明日可领取 button means check-in success"
+      - name: "Finish"
+        description: "Returned to home, call task_complete"

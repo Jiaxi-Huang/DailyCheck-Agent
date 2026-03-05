@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -72,7 +73,7 @@ class DailyCheckAgent:
             task_description=task_description,
             app_name=self.app_name,
         )
-
+        
         # 初始化 LLM 客户端
         self.api_provider = api_provider or "open-router"
         self._init_llm_client()
@@ -295,6 +296,9 @@ class DailyCheckAgent:
                     task_completed = True
                     summary = tool_args.get("summary", "任务已完成")
                     logger.info(f"✅ 任务完成：{summary}")
+                    # 先按 HOME 键回到主页
+                    logger.info("正在按 HOME 键回到主页...")
+                    self.renderer.press_key(3)  # HOME key code
                     break
 
             except Exception as e:

@@ -1,6 +1,6 @@
 api:
   open-router:
-    model: "bytedance-seed/seed-1.6-flash"
+    model: "z-ai/glm-4.7-flash"
     api-key: "{{ api_key }}"
   siliconflow:
     model: "Pro/zai-org/GLM-4.7"

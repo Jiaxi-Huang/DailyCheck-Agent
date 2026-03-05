@@ -1,15 +1,17 @@
 tasks:
-  taobao_checkin:
-    name: "淘宝打卡"
-    app: "淘宝"
+  aliyunpan_test_checkin:
+    name: "阿里云盘签到"
+    app: "阿里云盘"
     steps:
+      - name: "Open folder"
+        description: "Find and tap the Cloud folder on home screen(Under 淘宝 app)"
       - name: "Open app"
-        description: "Find and tap the 淘宝 app icon on home screen"
+        description: "Tap the 阿里云盘 icon"  
       - name: "Start check-in"
         description: "Tap the button that starts the daily check session"
-      - name: "Open sub page"
-        description: "Find and tap the 领淘金币 icon to end sub page"
       - name: "Complete check-in"
-        description: "Tap the 点击签到 button that completes the daily check session"
+        description: "Tap the 领取 button at top-left region that completes the daily check session, if there is no 领取 button, see if there is a 明日可领取 button to enter next step"
+      - name: "Check result"
+        description: "Check the 明日可领取 button means check-in success"
       - name: "Finish"
-        description: "Returned to app home, call task_complete"
+        description: "Returned to home, call task_complete"

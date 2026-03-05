@@ -16,9 +16,31 @@ class ConfigLoader:
             config_dir: 配置文件目录，默认为项目根目录的 config 文件夹
         """
         if config_dir is None:
-            # 默认配置目录为项目根目录的 config 文件夹
-            # 使用 Path(__file__).parent.parent.parent 定位到项目根目录
-            self.config_dir = Path(__file__).parent.parent.parent / "config"
+            # 优先级策略：
+            # 1. 当前工作目录的 config 文件夹（适用于已安装包 + 项目 config 的场景）
+            # 2. 包所在目录的父目录的 config（适用于开发模式）
+            # 3. 用户主目录的 .dailycheck/config
+            import importlib.util
+            
+            # 首先尝试当前工作目录
+            cwd_config = Path.cwd() / "config"
+            if cwd_config.exists() and (cwd_config / "tasks.yml").exists():
+                self.config_dir = cwd_config
+            else:
+                # 尝试获取包的实际路径
+                spec = importlib.util.find_spec("dailycheck_agent")
+                if spec and spec.origin:
+                    package_dir = Path(spec.origin).parent
+                    # 开发模式下，使用相对路径
+                    dev_config = package_dir.parent / "config"
+                    if dev_config.exists() and (dev_config / "tasks.yml").exists():
+                        self.config_dir = dev_config
+                    else:
+                        # 回退到用户主目录
+                        self.config_dir = Path.home() / ".dailycheck" / "config"
+                else:
+                    # 回退方案：使用当前工作目录
+                    self.config_dir = cwd_config
         else:
             self.config_dir = Path(config_dir)
 

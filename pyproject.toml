@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dailycheck-agent"
+version = "0.1.0"
+description = "DailyCheck-Agent - A GUI agent for daily-check workflow based on scrcpy/ADB"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "DailyCheck Team" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pyyaml>=6.0",
+    "requests>=2.28.0",
+]
+
+[project.scripts]
+dailycheck = "dailycheck_agent.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["dailycheck_agent"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

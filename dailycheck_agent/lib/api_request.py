@@ -221,7 +221,7 @@ def create_llm_client(
 
     # 默认模型配置
     DEFAULT_MODELS = {
-        "open-router": "bytedance-seed/seed-1.6-flash",
+        "open-router": "z-ai/glm-4.7-flash",
         "siliconflow": "Pro/zai-org/GLM-4.7",
     }
 

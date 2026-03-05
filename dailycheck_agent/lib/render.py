@@ -42,6 +42,10 @@ class ScreenRenderer:
         else:
             cmd = [self.adb_path] + command
 
+        # 当 shell=True 时，需要将命令列表转换为字符串
+        if shell:
+            cmd = " ".join(cmd)
+
         return subprocess.run(cmd, capture_output=True, check=True, shell=shell)
 
     def get_screen_bounds(self) -> Tuple[int, int]:
@@ -85,12 +89,11 @@ class ScreenRenderer:
             RuntimeError: 当获取屏幕信息失败时
         """
         try:
-            # 合并指令：dump 到临时文件 -> cat 输出 -> 清理
-            cmd = [
-                "shell",
-                "uiautomator dump /data/local/tmp/v.xml > /dev/null && cat /data/local/tmp/v.xml",
-            ]
-            result = self._run_adb(cmd, shell=True)
+            # 分步执行：先 dump，等待完成后再 cat
+            # 某些设备需要等待 dump 完成
+            self._run_adb(["shell", "uiautomator dump /data/local/tmp/v.xml"])
+            time.sleep(0.5)  # 等待 dump 完成
+            result = self._run_adb(["shell", "cat /data/local/tmp/v.xml"])
             xml_str = result.stdout.decode("utf-8", errors="ignore")
 
             # 从第一个 '<' 开始解析，防止 dump 提示信息干扰
@@ -285,11 +288,10 @@ class ScreenRenderer:
             包含屏幕信息的字典
         """
         try:
-            cmd = [
-                "shell",
-                "uiautomator dump /data/local/tmp/v.xml > /dev/null && cat /data/local/tmp/v.xml",
-            ]
-            result = self._run_adb(cmd, shell=True)
+            # 分步执行：先 dump，等待完成后再 cat
+            self._run_adb(["shell", "uiautomator dump /data/local/tmp/v.xml"])
+            time.sleep(0.5)
+            result = self._run_adb(["shell", "cat /data/local/tmp/v.xml"])
             xml_str = result.stdout.decode("utf-8", errors="ignore")
 
             start_idx = xml_str.find("<")

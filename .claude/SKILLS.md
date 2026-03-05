@@ -266,19 +266,85 @@ Ensure coordinates are within screen bounds.
 
 ## 6. Configuration
 
-### 6.1 Environment Variables
-```python
-# Path to ADB executable
-ADB_PATH = "scrcpy/adb.exe" 
+### 6.1 Configuration File (Recommended)
 
-# Device Serial (optional, defaults to connected device)
-DEVICE_SERIAL = "emulator-5554" 
+Create a YAML configuration file (e.g., `config.yml` or `.dailycheck.yml`) in your project directory or `~/.dailycheck/`:
 
-# Max retry attempts for failed actions
-MAX_RETRIES = 3
+```yaml
+# Task configuration (optional, run all tasks if not specified)
+# tasks:
+#   - aliyunpan_checkin
+
+api_provider: open-router
+device_serial: "emulator-5554"  # Optional, auto-detect if not set
+adb_path: "scrcpy/adb"          # Optional, auto-detect if not set
+max_steps: 50
+config_dir: "config"            # Directory containing tasks.yml and api.yml
 ```
 
-### 6.2 Tool Registration
+### 6.2 Command Line Arguments
+
+Command line arguments override configuration file values:
+
+```bash
+# Run all tasks (default behavior)
+dailycheck
+
+# Run specific task
+dailycheck aliyunpan_checkin
+
+# List all available tasks
+dailycheck --list-tasks
+
+# Specify config file
+dailycheck --config /path/to/config.yml
+
+# Override specific values
+dailycheck --api-provider siliconflow --max-steps 100
+```
+
+### 6.3 Environment Variables (Highest Priority)
+
+Environment variables override both config file and command line arguments:
+
+```bash
+export DAILYCHECK_API_PROVIDER=open-router
+export DAILYCHECK_DEVICE_SERIAL=emulator-5554
+export ADB_PATH=scrcpy/adb
+export MAX_STEPS=50
+export DAILYCHECK_CONFIG_DIR=config
+```
+
+### 6.4 Priority Order
+
+**Command Line > Environment Variables > Config File > Defaults**
+
+| Setting | CLI Arg | Env Variable | Default |
+|---------|---------|--------------|---------|
+| Task name | Positional arg | - | All tasks |
+| API provider | `--api-provider` | `DAILYCHECK_API_PROVIDER` | `open-router` |
+| Device serial | `--device-serial` | `DAILYCHECK_DEVICE_SERIAL` | Auto-detect |
+| ADB path | `--adb-path` | `ADB_PATH` | `scrcpy/adb` |
+| Max steps | `--max-steps` | `MAX_STEPS` | `50` |
+| Config dir | `--config-dir` | `DAILYCHECK_CONFIG_DIR` | `config` |
+
+### 6.5 Task Configuration
+
+Tasks are defined in `config/tasks.yml`:
+
+```yaml
+tasks:
+  aliyunpan_checkin:
+    name: "阿里云盘签到"
+    app: "阿里云盘"
+    steps:
+      - name: "Open app"
+        description: "Tap the 阿里云盘 icon"
+      - name: "Start check-in"
+        description: "Tap the button that starts the daily check session"
+```
+
+### 6.6 Tool Registration
 Ensure all tools are registered in the LLM client configuration:
 ```python
 tools = [
@@ -301,7 +367,54 @@ tools = [
 | `ADB unauthorized`        | RSA key not accepted            | Check device screen for "Allow USB debugging" prompt.   |
 | `Connection lost`         | USB/WiFi disconnected           | Re-establish connection before retrying.                |
 
-## 8. Integration with DailyCheck
+## 8. Ad Handling Guide
+
+This section describes how to handle ad screens during task execution. **Ad handling is implemented via prompt engineering, not hard-coded logic.** The LLM decides when and how to close ads based on screen information.
+
+### 8.1 Identifying Ad Screens
+
+The LLM should analyze screen elements for ad-related keywords:
+
+**Chinese Keywords:**
+- `跳过` (skip), `关闭` (close), `关掉` (close)
+- `广告` (advertisement)
+- `×`, `x`, `✕`, `❌` (close symbols)
+- `取消` (cancel), `不再提醒` (don't remind again), `稍后再说` (later)
+- `知道了` (got it), `关闭广告` (close ad)
+
+**English Keywords:**
+- `skip`, `close`, `ad`, `advert`
+- `skip ad`, `close`, `cancel`
+
+### 8.2 Ad Handling Strategy
+
+When the LLM detects ad-related elements in the screen information:
+
+1. **Priority Check**: Before executing the main task flow, check if the current screen contains ad elements.
+2. **Immediate Action**: If ad elements are detected, immediately call `tap_screen` to close the ad.
+3. **Wait for Update**: After closing the ad, wait for the screen to update before continuing.
+4. **Resume Task**: Once the ad is closed, resume the normal task execution.
+
+### 8.3 Example Prompt for Ad Handling
+
+Include the following guidance in the system prompt:
+
+```markdown
+## 广告处理（高优先级）
+在开始执行任务前和每一步操作后，**必须先检查是否为广告页面**：
+- 如果屏幕中出现 "跳过"、"关闭"、"广告"、"×"、"skip"、"close" 等关键词
+- 或者屏幕中有明显的关闭按钮、跳过按钮
+- **立即点击关闭/跳过按钮**，不要执行其他任务操作
+- 等待广告关闭后，再继续执行正常任务流程
+```
+
+### 8.4 Implementation Notes
+
+- **No Hard-coded Logic**: Ad detection and handling should be done by the LLM, not through hard-coded keyword matching in the agent code.
+- **Flexibility**: This approach allows the agent to handle various ad formats and layouts that may change over time.
+- **Task-Specific**: Different tasks may require different ad handling strategies; the LLM can adapt based on context.
+
+## 9. Integration with DailyCheck
 
 When integrating with the `tasks.yml` workflow:
 1.  **Define Goal:** Clearly state the objective (e.g., "Clock in at 9:00 AM").

@@ -9,7 +9,7 @@
 - [配置](#配置)
 - [运行](#运行)
 - [命令行选项](#命令行选项)
-- [环境变量](#环境变量)
+- [项目结构](#项目结构)
 - [许可证](#许可证)
 
 ---
@@ -170,32 +170,8 @@ chmod +x run.sh
 | `--adb-path` | | `./scrcpy/adb` | ADB 可执行文件路径 |
 | `--max-steps` | `-m` | `50` | 最大执行步骤数 |
 | `--config-dir` | | | 配置文件目录 |
+| `--list-tasks` | `-l` | | 列出所有可用任务 |
 | `--version` | `-v` | | 显示版本号 |
-
----
-
-## 环境变量
-
-可以通过环境变量配置代理：
-
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `DAILYCHECK_TASK` | 任务名称 | `taobao_checkin` |
-| `DAILYCHECK_API_PROVIDER` | API 提供商 | `open-router` |
-| `DAILYCHECK_DEVICE_SERIAL` | 设备序列号 | 自动检测 |
-| `ADB_PATH` | ADB 路径 | `./scrcpy/adb` |
-| `MAX_STEPS` | 最大步骤数 | `50` |
-| `DAILYCHECK_CONFIG_DIR` | 配置文件目录 | 默认配置目录 |
-
-示例：
-
-```bash
-export DAILYCHECK_TASK=taobao_checkin
-export DAILYCHECK_API_PROVIDER=siliconflow
-export MAX_STEPS=100
-
-dailycheck
-```
 
 ---
 
@@ -218,7 +194,6 @@ dailycheck-agent/
 │   └── tasks.yml          # 任务配置
 ├── scrcpy/                # ADB 工具
 ├── pyproject.toml         # 项目配置
-├── requirements.txt       # 依赖（已弃用）
 └── run.sh                 # 启动脚本（旧版）
 ```
 
@@ -230,4 +205,4 @@ dailycheck-agent/
 
 ---
 
-**语言选择**: [English](README.md) | [中文](readme-cn.md)
+**语言选择**: [English](README.md) | [中文](README-CN.md)

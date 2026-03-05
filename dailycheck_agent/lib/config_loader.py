@@ -1,6 +1,5 @@
 """配置加载模块 - 从 YAML 文件加载 API 和任务配置。"""
 
-import os
 import yaml
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -105,13 +104,11 @@ class ConfigLoader:
 
         return self._task_config
 
-    def get_api_key(self, provider: str, env_var: Optional[str] = None) -> str:
-        """获取 API 密钥，支持从环境变量覆盖。
+    def get_api_key(self, provider: str) -> str:
+        """获取 API 密钥。
 
         Args:
             provider: API 提供商名称
-            env_var: 环境变量名称，用于覆盖配置文件中的 api-key。
-                    如果为 None，使用默认的 DAILYCHECK_API_KEY
 
         Returns:
             API 密钥字符串
@@ -119,21 +116,13 @@ class ConfigLoader:
         Raises:
             ValueError: 当 API 密钥未设置时
         """
-        if env_var is None:
-            env_var = "DAILYCHECK_API_KEY"
-
-        # 优先从环境变量获取
-        api_key = os.environ.get(env_var)
-        if api_key:
-            return api_key
-
         # 从配置文件获取（支持 {{ api_key }} 占位符提示）
         config = self.load_api_config(provider)
         api_key = config.get("api-key", "")
 
         if not api_key or api_key == "{{ api_key }}":
             raise ValueError(
-                f"API 密钥未设置。请设置环境变量 {env_var} 或在配置文件中填写有效的 api-key"
+                f"API 密钥未设置。请在配置文件 {self.config_dir / 'api.yml'} 中填写有效的 api-key"
             )
 
         return api_key

@@ -11,7 +11,6 @@ A GUI-based agent to help you stay consistent with daily check-ins. Perfect for 
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Command Line Options](#command-line-options)
-- [Environment Variables](#environment-variables)
 - [License](#license)
 
 ---
@@ -174,32 +173,6 @@ chmod +x run.sh
 | `--config-dir` | | | Configuration directory |
 | `--version` | `-v` | | Show version number |
 
----
-
-## Environment Variables
-
-Configure the agent using environment variables:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DAILYCHECK_TASK` | Task name | `taobao_checkin` |
-| `DAILYCHECK_API_PROVIDER` | API provider | `open-router` |
-| `DAILYCHECK_DEVICE_SERIAL` | Device serial | Auto-detect |
-| `ADB_PATH` | ADB path | `./scrcpy/adb` |
-| `MAX_STEPS` | Maximum steps | `50` |
-| `DAILYCHECK_CONFIG_DIR` | Config directory | Default config directory |
-
-Example:
-
-```bash
-export DAILYCHECK_TASK=taobao_checkin
-export DAILYCHECK_API_PROVIDER=siliconflow
-export MAX_STEPS=100
-
-dailycheck
-```
-
----
 
 ## Project Structure
 

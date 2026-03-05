@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# DailyCheck-Agent 启动脚本
+# DailyCheck-Agent 启动脚本（旧版）
 # 用法：./run.sh [任务名称] [API 提供商] [设备序列号]
+# 注：推荐使用 dailycheck 命令代替此脚本
 
 set -e
 
@@ -14,7 +15,7 @@ DEFAULT_TASK="taobao_checkin"
 DEFAULT_API_PROVIDER="open-router"
 DEFAULT_ADB_PATH="$SCRIPT_DIR/scrcpy/adb"
 
-# 从环境变量或参数获取配置
+# 从参数获取配置
 TASK_NAME="${1:-$DEFAULT_TASK}"
 API_PROVIDER="${2:-$DEFAULT_API_PROVIDER}"
 DEVICE_SERIAL="${3:-}"
@@ -50,12 +51,6 @@ if [ ! -f "$ADB_PATH" ]; then
     echo -e "${YELLOW}⚠ 警告${NC}: ADB 文件不存在：$ADB_PATH"
     echo -e "${DIM}  将尝试使用系统 PATH 中的 adb${NC}"
     ADB_PATH="adb"
-fi
-
-# 检查 API 密钥
-if [ -z "$DAILYCHECK_API_KEY" ]; then
-    echo -e "${YELLOW}⚠ 警告${NC}: 未设置 DAILYCHECK_API_KEY 环境变量"
-    echo -e "${DIM}  请确保在 config/api.yml 中配置了有效的 API 密钥${NC}"
 fi
 
 # 打印配置

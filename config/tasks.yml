@@ -1,5 +1,5 @@
 tasks:
-  aliyunpan_test_checkin:
+  aliyunpan_checkin:
     name: "阿里云盘签到"
     app: "阿里云盘"
     steps:

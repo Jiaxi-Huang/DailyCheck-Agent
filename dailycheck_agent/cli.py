@@ -1,7 +1,6 @@
 """DailyCheck-Agent 命令行入口."""
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -28,24 +27,18 @@ def load_yaml(file_path: str) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def get_config_value(config: dict, key: str, env_var: str, default: str = "") -> str:
-    """获取配置值，优先级：环境变量 > 配置文件 > 默认值。
+def get_config_value(config: dict, key: str, default: str = "") -> str:
+    """获取配置值，优先级：配置文件 > 默认值。
 
     Args:
         config: 配置字典
         key: 配置键名
-        env_var: 环境变量名
         default: 默认值
 
     Returns:
         配置值
     """
-    # 环境变量优先级最高
-    env_value = os.environ.get(env_var)
-    if env_value:
-        return env_value
-
-    # 其次从配置文件读取
+    # 从配置文件读取
     if key in config:
         return str(config[key])
 
@@ -89,7 +82,7 @@ def main():
     args, remaining = config_parser.parse_known_args()
 
     # 加载用户配置文件
-    config_path = args.config if args.config else os.environ.get("DAILYCHECK_CONFIG", "")
+    config_path = args.config if args.config else ""
     if not config_path:
         # 默认在当前目录或项目目录查找 config.yml
         default_config_paths = [
@@ -166,7 +159,7 @@ def main():
     args = parser.parse_args(remaining)
 
     # 确定配置目录
-    config_dir = args.config_dir if args.config_dir else get_config_value(user_config, "config_dir", "DAILYCHECK_CONFIG_DIR", "")
+    config_dir = args.config_dir if args.config_dir else get_config_value(user_config, "config_dir", "")
     if not config_dir:
         # 默认使用项目 config 目录
         config_dir = str(Path(__file__).parent.parent / "config")
@@ -182,11 +175,11 @@ def main():
             print(f"  - {task_name} ({app_name})")
         sys.exit(0)
 
-    # 获取配置值，优先级：命令行参数 > 环境变量 > 配置文件 > 默认值
-    api_provider = args.api_provider if args.api_provider else get_config_value(user_config, "api_provider", "DAILYCHECK_API_PROVIDER", "open-router")
-    device_serial = args.device_serial if args.device_serial else get_config_value(user_config, "device_serial", "DAILYCHECK_DEVICE_SERIAL", "")
-    adb_path = args.adb_path if args.adb_path else get_config_value(user_config, "adb_path", "ADB_PATH", "")
-    max_steps = args.max_steps if args.max_steps > 0 else int(get_config_value(user_config, "max_steps", "MAX_STEPS", "50"))
+    # 获取配置值，优先级：命令行参数 > 配置文件 > 默认值
+    api_provider = args.api_provider if args.api_provider else get_config_value(user_config, "api_provider", "open-router")
+    device_serial = args.device_serial if args.device_serial else get_config_value(user_config, "device_serial", "")
+    adb_path = args.adb_path if args.adb_path else get_config_value(user_config, "adb_path", "")
+    max_steps = args.max_steps if args.max_steps > 0 else int(get_config_value(user_config, "max_steps", "50"))
 
     # 获取脚本所在目录（用于查找默认的 ADB 路径）
     script_dir = Path(__file__).parent.parent
@@ -207,11 +200,6 @@ def main():
         print(f"⚠ 警告：ADB 文件不存在：{adb_path}")
         print("  将尝试使用系统 PATH 中的 adb")
         adb_path = "adb"
-
-    # 检查 API 密钥
-    if not os.environ.get("DAILYCHECK_API_KEY"):
-        print("⚠ 警告：未设置 DAILYCHECK_API_KEY 环境变量")
-        print("  请确保在 config/api.yml 中配置了有效的 API 密钥")
 
     # 确定要执行的任务
     if args.task_name:

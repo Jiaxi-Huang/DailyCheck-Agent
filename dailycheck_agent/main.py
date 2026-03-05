@@ -91,11 +91,6 @@ class DailyCheckAgent:
 
     def _get_default_adb_path(self) -> str:
         """获取默认 ADB 路径。"""
-        # 尝试从环境变量获取
-        adb_path = os.environ.get("ADB_PATH")
-        if adb_path:
-            return adb_path
-
         # 默认路径：项目根目录的 scrcpy/adb
         default_path = Path(__file__).parent.parent / "scrcpy" / "adb"
         if default_path.exists():

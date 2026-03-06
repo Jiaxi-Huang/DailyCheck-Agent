@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dailycheck_agent.lib.api_request import LLMClient, create_llm_client
-from dailycheck_agent.lib.config_loader import ConfigLoader
+from dailycheck_agent.lib.config_loader import (
+    APIProviderNotFoundError,
+    ConfigLoader,
+)
 from dailycheck_agent.lib.prompt import PromptBuilder
 from dailycheck_agent.lib.render import ScreenRenderer
 
@@ -114,8 +117,15 @@ class DailyCheckAgent:
                 model=model if model else None,
             )
             logger.info(f"LLM 客户端已初始化：{self.api_provider} / {model or 'default'}")
+        except ValueError as e:
+            # API 配置错误，直接抛出清晰错误信息
+            logger.error(f"API 配置错误：{e}")
+            raise
+        except APIProviderNotFoundError as e:
+            logger.error(f"API 提供商不存在：{e}")
+            raise
         except Exception as e:
-            logger.warning(f"LLM 客户端初始化失败：{e}")
+            logger.error(f"LLM 客户端初始化失败：{e}")
             raise
 
     def _build_task_description(self) -> str:

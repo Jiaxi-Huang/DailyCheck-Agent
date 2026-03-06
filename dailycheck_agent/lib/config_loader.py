@@ -508,9 +508,22 @@ class ConfigLoader:
         config = self.load_api_config(provider)
         api_key = config.get("api-key", "")
 
-        if not api_key or api_key == "{{ api_key }}":
+        if not api_key:
             raise ValueError(
                 f"API 密钥未设置。请在配置文件 {self.config_dir / 'api.yml'} 中填写有效的 api-key"
+            )
+
+        if api_key == "{{ api_key }}":
+            raise ValueError(
+                f"API 密钥未配置。检测到配置文件 {self.config_dir / 'api.yml'} 中使用占位符 '{{{{ api_key }}}}'，\n"
+                f"请替换为实际的 API 密钥。"
+            )
+
+        # 检查是否为常见的占位符格式
+        if api_key.startswith("{{") and api_key.endswith("}}"):
+            raise ValueError(
+                f"API 密钥未配置。配置文件 {self.config_dir / 'api.yml'} 中的 api-key 为占位符：{api_key}\n"
+                f"请替换为实际的 API 密钥。"
             )
 
         return api_key

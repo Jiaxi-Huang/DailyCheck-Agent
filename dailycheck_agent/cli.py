@@ -8,8 +8,12 @@ from pathlib import Path
 
 import yaml
 
-from dailycheck_agent.lib.config_loader import ConfigLoader
-from dailycheck_agent.lib.tui import TaskTUI
+from dailycheck_agent.lib.config_loader import (
+    APIProviderNotFoundError,
+    ConfigLoader,
+    ConfigValidationError,
+)
+from dailycheck_agent.lib.tui import COLORS, TaskTUI
 from dailycheck_agent.main import DailyCheckAgent
 
 
@@ -221,6 +225,25 @@ def main():
     logger = logging.getLogger("dailycheck")
     logger.info(f"Starting DailyCheck-Agent, task: {task_names}")
 
+    # Validate API configuration before starting TUI
+    try:
+        loader = ConfigLoader(config_dir=config_dir)
+        _ = loader.get_api_key(api_provider)
+    except ValueError as e:
+        # API key not configured
+        print(f"\n{COLORS['red']}❌ 错误：{e}{COLORS['reset']}\n")
+        sys.exit(1)
+    except APIProviderNotFoundError as e:
+        print(f"\n{COLORS['red']}❌ 错误：{e}{COLORS['reset']}\n")
+        sys.exit(1)
+    except ConfigValidationError as e:
+        print(f"\n{COLORS['red']}❌ 错误：配置文件验证失败{COLORS['reset']}")
+        print(f"   {e}\n")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n{COLORS['red']}❌ 错误：无法加载 API 配置：{e}{COLORS['reset']}\n")
+        sys.exit(1)
+
     # Start TUI
     tui.start()
 
@@ -247,6 +270,14 @@ def main():
             # Mark task as complete (success or failure)
             tui.complete_task(task_name, success=success, error="" if success else "Agent run failed")
 
+        except ValueError as e:
+            # API configuration error during agent initialization
+            error_msg = f"API 配置错误：{e}"
+            tui.complete_task(task_name, success=False, error=error_msg)
+            results.append((task_name, False))
+            # Stop processing remaining tasks on API config error
+            print(f"\n{COLORS['red']}❌ {error_msg}{COLORS['reset']}")
+            break
         except Exception as e:
             tui.complete_task(task_name, success=False, error=str(e))
             results.append((task_name, False))

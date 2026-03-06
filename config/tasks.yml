@@ -32,8 +32,8 @@ tasks:
   #    - name: "Finish"
   #      description: "Returned to app home, call task_complete"
   clash_open:
-    name: "打开clash proxy" 
-    app: "clash"
+    name: "打开Clash proxy" 
+    app: "Clash"
     steps:
       - name: "slide screen"
         description: "Slide left on home screen"

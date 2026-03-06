@@ -414,7 +414,416 @@ Include the following guidance in the system prompt:
 - **Flexibility**: This approach allows the agent to handle various ad formats and layouts that may change over time.
 - **Task-Specific**: Different tasks may require different ad handling strategies; the LLM can adapt based on context.
 
-## 9. Integration with DailyCheck
+## 9. Git Operations
+
+The following tools are available for Git version control operations. These tools help manage code changes, commits, and repository operations.
+
+### 9.1 `git_status`
+Checks the current status of the Git repository, including staged, unstaged, and untracked files.
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_status",
+        "description": "Check the current Git repository status",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_status",
+    "arguments": {}
+}
+```
+
+### 9.2 `git_add`
+Stages files for commit.
+
+| Parameter | Type   | Description                                    |
+| --------- | ------ | ---------------------------------------------- |
+| `files`   | array  | List of file paths to stage (or "." for all)   |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_add",
+        "description": "Stage files for commit",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "File paths to stage"
+                }
+            },
+            "required": ["files"]
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_add",
+    "arguments": {"files": ["src/main.py", "tests/test_main.py"]}
+}
+```
+
+### 9.3 `git_diff`
+Shows changes between commits, branches, or working directory.
+
+| Parameter    | Type   | Description                                      |
+| ------------ | ------ | ------------------------------------------------ |
+| `target`     | string | Git target (e.g., "HEAD", "main", branch name)   |
+| `staged`     | boolean| If true, show staged changes; otherwise working directory changes |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_diff",
+        "description": "Show changes between commits or working directory",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "target": {"type": "string", "description": "Git target like HEAD, main, or branch name"},
+                "staged": {"type": "boolean", "description": "Show staged changes if true"}
+            },
+            "required": []
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_diff",
+    "arguments": {"target": "HEAD", "staged": false}
+}
+```
+
+### 9.4 `git_commit`
+Creates a new commit with staged changes.
+
+| Parameter     | Type   | Description                                    |
+| ------------- | ------ | ---------------------------------------------- |
+| `message`     | string | Commit message                                 |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_commit",
+        "description": "Create a new commit with staged changes",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "description": "Commit message"}
+            },
+            "required": ["message"]
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_commit",
+    "arguments": {"message": "Fix bug in user authentication"}
+}
+```
+
+### 9.5 `git_log`
+Shows commit history.
+
+| Parameter | Type    | Description                                    |
+| --------- | ------- | ---------------------------------------------- |
+| `limit`   | integer | Number of commits to show (default: 10)        |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_log",
+        "description": "Show commit history",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "description": "Number of commits to show", "default": 10}
+            },
+            "required": []
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_log",
+    "arguments": {"limit": 5}
+}
+```
+
+### 9.6 `git_branch`
+Lists or creates branches.
+
+| Parameter | Type    | Description                                    |
+| --------- | ------- | ---------------------------------------------- |
+| `name`    | string  | Branch name to create (optional)               |
+| `checkout`| boolean | If true, checkout the branch after creation    |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_branch",
+        "description": "List or create Git branches",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Branch name to create"},
+                "checkout": {"type": "boolean", "description": "Checkout branch after creation"}
+            },
+            "required": []
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_branch",
+    "arguments": {"name": "feature/new-feature", "checkout": true}
+}
+```
+
+### 9.7 `git_checkout`
+Switches to a different branch.
+
+| Parameter | Type   | Description                                    |
+| --------- | ------ | ---------------------------------------------- |
+| `branch`  | string | Branch name to checkout                        |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_checkout",
+        "description": "Switch to a different branch",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "branch": {"type": "string", "description": "Branch name to checkout"}
+            },
+            "required": ["branch"]
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_checkout",
+    "arguments": {"branch": "main"}
+}
+```
+
+### 9.8 `git_pull`
+Fetches and merges changes from remote repository.
+
+| Parameter | Type   | Description                                    |
+| --------- | ------ | ---------------------------------------------- |
+| `remote`  | string | Remote name (default: "origin")                |
+| `branch`  | string | Branch to pull from (default: current branch)  |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_pull",
+        "description": "Fetch and merge changes from remote repository",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "remote": {"type": "string", "description": "Remote name", "default": "origin"},
+                "branch": {"type": "string", "description": "Branch to pull from"}
+            },
+            "required": []
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_pull",
+    "arguments": {"remote": "origin", "branch": "main"}
+}
+```
+
+### 9.9 `git_push`
+Pushes commits to remote repository.
+
+| Parameter | Type    | Description                                    |
+| --------- | ------- | ---------------------------------------------- |
+| `remote`  | string  | Remote name (default: "origin")                |
+| `branch`  | string  | Branch to push to (default: current branch)    |
+| `force`   | boolean | Force push (use with caution)                  |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_push",
+        "description": "Push commits to remote repository",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "remote": {"type": "string", "description": "Remote name", "default": "origin"},
+                "branch": {"type": "string", "description": "Branch to push to"},
+                "force": {"type": "boolean", "description": "Force push", "default": false}
+            },
+            "required": []
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_push",
+    "arguments": {"remote": "origin", "branch": "main", "force": false}
+}
+```
+
+### 9.10 `git_merge`
+Merges one branch into the current branch.
+
+| Parameter | Type   | Description                                    |
+| --------- | ------ | ---------------------------------------------- |
+| `branch`  | string | Branch to merge into current branch            |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_merge",
+        "description": "Merge a branch into the current branch",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "branch": {"type": "string", "description": "Branch to merge"}
+            },
+            "required": ["branch"]
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_merge",
+    "arguments": {"branch": "feature/new-feature"}
+}
+```
+
+### 9.11 `git_stash`
+Temporarily saves changes without committing.
+
+| Parameter | Type    | Description                                    |
+| --------- | ------- | ---------------------------------------------- |
+| `message` | string  | Optional stash message                         |
+| `pop`     | boolean | If true, apply and remove the latest stash     |
+
+**Definition:**
+```json
+{
+    "type": "function",
+    "function": {
+        "name": "git_stash",
+        "description": "Temporarily save changes without committing",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "description": "Stash message"},
+                "pop": {"type": "boolean", "description": "Apply and remove latest stash", "default": false}
+            },
+            "required": []
+        }
+    }
+}
+```
+
+**Example Call:**
+```json
+{
+    "name": "git_stash",
+    "arguments": {"message": "WIP: incomplete feature"}
+}
+```
+
+## 10. Git Best Practices
+
+### 10.1 Commit Message Guidelines
+- Use **imperative mood** ("Add feature" not "Added feature")
+- Keep the first line under **50 characters**
+- Add a blank line before detailed explanation if needed
+- Reference issues or PRs when applicable
+
+### 10.2 Workflow Recommendations
+1. **Before starting work:**
+   - Run `git_status` to check current state
+   - Run `git_pull` to get latest changes
+   - Create a new branch with `git_branch` for features/fixes
+
+2. **During development:**
+   - Use `git_add` to stage related changes together
+   - Use `git_diff` to review changes before committing
+   - Make frequent, logical commits with clear messages
+
+3. **Before pushing:**
+   - Run `git_status` to ensure all intended changes are staged
+   - Run `git_log` to verify commit history
+   - Run `git_push` to share changes
+
+### 10.3 Handling Conflicts
+If a merge conflict occurs:
+1. Identify conflicted files from `git_status` output
+2. Read conflicted file content to understand the conflict
+3. Edit files to resolve conflicts manually
+4. Stage resolved files with `git_add`
+5. Complete merge with `git_commit`
+
+## 11. Integration with DailyCheck
 
 When integrating with the `tasks.yml` workflow:
 1.  **Define Goal:** Clearly state the objective (e.g., "Clock in at 9:00 AM").

@@ -58,7 +58,116 @@ def sample_task_config():
 
 
 @pytest.fixture
-def mock_config_files(temp_config_dir, sample_api_config, sample_task_config):
+def sample_prompt_config():
+    """示例提示词配置。"""
+    return {
+        "system_prompt": {
+            "template": "你是一个安卓手机自动化打卡助手，{app_info}。\n\n## 可用工具\n{tools_description}\n\n## 工作流程\n1. 分析当前屏幕\n2. 决策下一步操作\n3. 调用工具执行\n\n请根据屏幕信息做出正确的决策。",
+            "app_info_templates": {
+                "with_app": "目标应用是【{app_name}】",
+                "without_app": "目标应用由任务决定",
+            },
+        },
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "tap_screen",
+                    "description": "点击屏幕上的指定坐标",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "x": {"type": "integer", "description": "水平坐标"},
+                            "y": {"type": "integer", "description": "垂直坐标"},
+                        },
+                        "required": ["x", "y"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "slide_screen",
+                    "description": "在屏幕上从一个坐标滑动到另一个坐标",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "start_x": {"type": "integer"},
+                            "start_y": {"type": "integer"},
+                            "end_x": {"type": "integer"},
+                            "end_y": {"type": "integer"},
+                        },
+                        "required": ["start_x", "start_y", "end_x", "end_y"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "press_key",
+                    "description": "按下系统按键",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "key_code": {"type": "string"},
+                        },
+                        "required": ["key_code"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "input_text",
+                    "description": "输入文本",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {"type": "string"},
+                        },
+                        "required": ["text"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "task_complete",
+                    "description": "标记任务完成",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "summary": {"type": "string"},
+                        },
+                        "required": [],
+                    },
+                },
+            },
+        ],
+        "key_codes": {
+            "HOME": 3,
+            "BACK": 4,
+            "ENTER": 66,
+            "APP_SWITCH": 187,
+        },
+        "messages": {
+            "user_message": {
+                "step_prefix": "【第 {step} 回合】",
+                "error_prefix": "⚠️ 上一步操作失败：{error_message}",
+                "screen_info_prefix": "当前屏幕上的可用元素如下：",
+                "task_prefix": "当前任务：",
+            },
+            "fallback_message": "你刚才只是回复了文本而没有调用任何工具。请使用工具进行下一步操作。",
+            "tool_result": {
+                "success_prefix": "执行成功：",
+                "new_screen_prefix": "。当前最新的屏幕元素如下：\n",
+            },
+        },
+    }
+
+
+@pytest.fixture
+def mock_config_files(temp_config_dir, sample_api_config, sample_task_config, sample_prompt_config):
     """创建模拟配置文件。"""
     # 写入 API 配置
     api_file = temp_config_dir / "api.yml"
@@ -69,6 +178,11 @@ def mock_config_files(temp_config_dir, sample_api_config, sample_task_config):
     task_file = temp_config_dir / "tasks.yml"
     with open(task_file, "w", encoding="utf-8") as f:
         yaml.safe_dump(sample_task_config, f)
+
+    # 写入提示词配置
+    prompt_file = temp_config_dir / "prompts.yml"
+    with open(prompt_file, "w", encoding="utf-8") as f:
+        yaml.safe_dump(sample_prompt_config, f)
 
     return temp_config_dir
 

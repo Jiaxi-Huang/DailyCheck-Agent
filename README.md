@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/Jiaxi-Huang/DailyCheck-Agent">
     <picture>
-      <img src="logo.svg" alt="DailyCheck Agent logo">
+      <img src="assets/logo.svg" alt="DailyCheck Agent logo">
     </picture>
   </a>
 </p>
@@ -85,6 +85,33 @@ mv scrcpy-* scrcpy
 
 For other platforms, download from [scrcpy releases](https://github.com/Genymobile/scrcpy/releases).
 
+### ADB Setup (Android Device)
+
+Before using DailyCheck-Agent, you need to enable ADB debugging on your Android device:
+
+#### Step 1: Enable Developer Options
+
+1. Open **Settings** on your device
+2. Go to **About Phone**
+3. Find **Build Number** (or **MIUI Version** on Xiaomi devices)
+4. Tap it **7 times** quickly until you see "You are now a developer!"
+
+#### Step 2: Enable USB Debugging
+
+1. Go to **Settings** > **Additional Settings** > **Developer Options**
+2. Find and enable **USB Debugging**
+
+![Enable USB Debugging](assets/adb_setup_1.jpg)
+
+#### Step 3: Set USB Configuration to RNDIS
+
+1. In Developer Options, find **USB Configuration** or **Default USB Configuration**
+2. Select **RNDIS (USB Ethernet)** mode
+
+![Set USB to RNDIS](assets/adb_setup_2.jpg)
+
+> **Note:** The exact menu names may vary depending on your device manufacturer and Android version.
+
 ---
 
 ## Configuration
@@ -143,11 +170,14 @@ Task configuration fields:
 ### Option 1: Using `dailycheck` command (Recommended)
 
 ```bash
-# Basic usage (uses default task)
+# Basic usage (runs all tasks)
 dailycheck
 
 # Specify a task
 dailycheck taobao_checkin
+
+# List all available tasks
+dailycheck --list-tasks
 
 # With custom options
 dailycheck taobao_checkin --api-provider open-router --max-steps 50
@@ -167,6 +197,30 @@ python -m dailycheck_agent taobao_checkin
 ```bash
 chmod +x run.sh
 ./run.sh taobao_checkin open-router
+```
+
+### Terminal UI
+
+The agent features a claude-code style terminal UI that displays:
+
+- **Progress bar** - Real-time visualization of task completion
+- **Task list** - All tasks with status indicators (○ pending, ● running, ✅ success, ❌ failure)
+- **Current action** - Spinner animation with current step count and action description
+- **Clean output** - Logs are written to `~/.dailycheck/logs/dailycheck.log`, only errors shown in console
+
+Example output:
+```
+DailyCheck Agent
+
+[████████████░░░░░░░░░░░░░░░░░] 2/0/5
+
+Tasks:
+  ✅ 阿里云盘签到
+  ● ▶ 淘宝领取淘金币
+      Tap the 淘宝 icon
+
+Progress:
+  ⠙ 15/50 Tap the 淘宝 icon
 ```
 
 ---
@@ -197,13 +251,16 @@ dailycheck-agent/
 │       ├── api_request.py # LLM API requests
 │       ├── config_loader.py # Configuration loader
 │       ├── prompt.py      # Prompt builder
+│       ├── tui.py         # Terminal UI
 │       └── render.py      # Screen renderer
 ├── config/
 │   ├── api.yml            # API configuration
-│   └── tasks.yml          # Task configuration
+│   ├── tasks.yml          # Task configuration
+│   └── prompts.yml        # Prompt templates
 ├── scrcpy/                # ADB tools
+├── tests/                 # Test suite
+├── assets/                # Assets 
 ├── pyproject.toml         # Project configuration
-├── requirements.txt       # Dependencies (deprecated)
 └── run.sh                 # Startup script (legacy)
 ```
 

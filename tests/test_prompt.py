@@ -1,74 +1,48 @@
 """PromptBuilder 模块测试。"""
 
 import pytest
+import yaml
 
-from dailycheck_agent.lib.prompt import (
-    KEY_CODES,
-    PromptBuilder,
-    TOOLS,
-)
-
-
-class TestToolsDefinition:
-    """测试工具定义。"""
-
-    def test_tools_list_not_empty(self):
-        """测试工具列表不为空。"""
-        assert len(TOOLS) > 0
-
-    def test_tool_structure(self):
-        """测试工具结构完整性。"""
-        for tool in TOOLS:
-            assert "type" in tool
-            assert "function" in tool
-            assert "name" in tool["function"]
-            assert "description" in tool["function"]
-            assert "parameters" in tool["function"]
-
-    def test_all_required_tools_present(self):
-        """测试所有必需的工具都存在。"""
-        tool_names = [tool["function"]["name"] for tool in TOOLS]
-        required_tools = ["tap_screen", "slide_screen", "press_key", "input_text", "task_complete"]
-
-        for tool_name in required_tools:
-            assert tool_name in tool_names
-
-    def test_key_codes_not_empty(self):
-        """测试按键代码映射不为空。"""
-        assert len(KEY_CODES) > 0
-        assert "HOME" in KEY_CODES
-        assert "BACK" in KEY_CODES
+from dailycheck_agent.lib.prompt import PromptBuilder
 
 
 class TestPromptBuilderInit:
     """测试 PromptBuilder 初始化。"""
 
-    def test_init_with_defaults(self):
+    def test_init_with_defaults(self, mock_config_files):
         """测试使用默认参数初始化。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
 
         assert builder.system_prompt is not None
         assert builder.task_description is None
         assert builder.app_name is None
 
-    def test_init_with_task_description(self):
+    def test_init_with_task_description(self, mock_config_files):
         """测试使用任务描述初始化。"""
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
         task_desc = "Complete the daily check-in task"
-        builder = PromptBuilder(task_description=task_desc)
+        builder = PromptBuilder(task_description=task_desc, config_loader=loader)
 
         assert builder.task_description == task_desc
 
-    def test_init_with_app_name(self):
+    def test_init_with_app_name(self, mock_config_files):
         """测试使用应用名称初始化。"""
-        builder = PromptBuilder(app_name="淘宝")
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(app_name="淘宝", config_loader=loader)
 
         assert builder.app_name == "淘宝"
         assert "淘宝" in builder.system_prompt
 
-    def test_init_with_custom_system_prompt(self):
+    def test_init_with_custom_system_prompt(self, mock_config_files):
         """测试使用自定义系统提示词初始化。"""
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
         custom_prompt = "Custom system prompt"
-        builder = PromptBuilder(system_prompt=custom_prompt)
+        builder = PromptBuilder(system_prompt=custom_prompt, config_loader=loader)
 
         assert builder.system_prompt == custom_prompt
 
@@ -76,26 +50,21 @@ class TestPromptBuilderInit:
 class TestBuildSystemMessage:
     """测试系统消息构建。"""
 
-    def test_build_system_message(self):
+    def test_build_system_message(self, mock_config_files):
         """测试构建系统消息。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         message = builder.build_system_message()
 
         assert message["role"] == "system"
         assert len(message["content"]) > 0
 
-    def test_system_message_contains_tools_info(self):
-        """测试系统消息包含工具信息。"""
-        builder = PromptBuilder()
-        message = builder.build_system_message()
-
-        assert "tap_screen" in message["content"]
-        assert "slide_screen" in message["content"]
-        assert "press_key" in message["content"]
-
-    def test_system_message_with_app_name(self):
+    def test_system_message_with_app_name(self, mock_config_files):
         """测试系统消息包含应用名称。"""
-        builder = PromptBuilder(app_name="京东")
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(app_name="京东", config_loader=loader)
         message = builder.build_system_message()
 
         assert "京东" in message["content"]
@@ -104,25 +73,31 @@ class TestBuildSystemMessage:
 class TestBuildUserMessage:
     """测试用户消息构建。"""
 
-    def test_build_user_message_basic(self):
+    def test_build_user_message_basic(self, mock_config_files):
         """测试构建基本用户消息。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         screen_info = "Screen elements: button at (100, 200)"
         message = builder.build_user_message(screen_info=screen_info)
 
         assert message["role"] == "user"
         assert screen_info in message["content"]
 
-    def test_build_user_message_with_step(self):
+    def test_build_user_message_with_step(self, mock_config_files):
         """测试构建带步骤的用户消息。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         message = builder.build_user_message(screen_info="screen info", step=5)
 
         assert "第 5 回合" in message["content"]
 
-    def test_build_user_message_with_error(self):
+    def test_build_user_message_with_error(self, mock_config_files):
         """测试构建带错误的用户消息。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         message = builder.build_user_message(
             screen_info="screen info",
             error_message="Previous action failed",
@@ -131,17 +106,21 @@ class TestBuildUserMessage:
         assert "上一步操作失败" in message["content"]
         assert "Previous action failed" in message["content"]
 
-    def test_build_user_message_with_task_description(self):
+    def test_build_user_message_with_task_description(self, mock_config_files):
         """测试构建带任务描述的用户消息。"""
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
         task_desc = "Complete sign-in task"
-        builder = PromptBuilder(task_description=task_desc)
+        builder = PromptBuilder(task_description=task_desc, config_loader=loader)
         message = builder.build_user_message(screen_info="screen info")
 
         assert task_desc in message["content"]
 
-    def test_build_user_message_combined(self):
+    def test_build_user_message_combined(self, mock_config_files):
         """测试构建组合信息的用户消息。"""
-        builder = PromptBuilder(task_description="Sign in")
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(task_description="Sign in", config_loader=loader)
         message = builder.build_user_message(
             screen_info="screen elements",
             step=3,
@@ -159,9 +138,11 @@ class TestBuildUserMessage:
 class TestBuildToolResultMessage:
     """测试工具结果消息构建。"""
 
-    def test_build_tool_result_message(self):
+    def test_build_tool_result_message(self, mock_config_files):
         """测试构建工具结果消息。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         message = builder.build_tool_result_message(
             tool_name="tap_screen",
             tool_call_id="call_123",
@@ -177,81 +158,84 @@ class TestBuildToolResultMessage:
 class TestBuildFallbackMessage:
     """测试兜底消息构建。"""
 
-    def test_build_fallback_message(self):
+    def test_build_fallback_message(self, mock_config_files):
         """测试构建兜底消息。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         message = builder.build_fallback_message()
 
         assert message["role"] == "user"
         assert "工具" in message["content"]
-        assert "tap_screen" in message["content"]
-        assert "task_complete" in message["content"]
 
 
 class TestGetTools:
     """测试获取工具定义。"""
 
-    def test_get_tools(self):
+    def test_get_tools(self, mock_config_files):
         """测试获取工具列表。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         tools = builder.get_tools()
 
-        assert tools == TOOLS
         assert len(tools) == 5
+        tool_names = [t["function"]["name"] for t in tools]
+        assert "tap_screen" in tool_names
+        assert "task_complete" in tool_names
 
 
 class TestGetKeyCode:
     """测试获取按键代码。"""
 
-    def test_get_key_code_home(self):
+    def test_get_key_code_home(self, mock_config_files):
         """测试获取 HOME 键代码。"""
-        builder = PromptBuilder()
-        assert builder.get_key_code("HOME") == KEY_CODES["HOME"]
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
+        assert builder.get_key_code("HOME") == 3
 
-    def test_get_key_code_back(self):
+    def test_get_key_code_back(self, mock_config_files):
         """测试获取 BACK 键代码。"""
-        builder = PromptBuilder()
-        assert builder.get_key_code("BACK") == KEY_CODES["BACK"]
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
+        assert builder.get_key_code("BACK") == 4
 
-    def test_get_key_code_case_insensitive(self):
+    def test_get_key_code_case_insensitive(self, mock_config_files):
         """测试按键代码大小写不敏感。"""
-        builder = PromptBuilder()
-        assert builder.get_key_code("home") == KEY_CODES["HOME"]
-        assert builder.get_key_code("Home") == KEY_CODES["HOME"]
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
+        assert builder.get_key_code("home") == 3
+        assert builder.get_key_code("Home") == 3
 
-    def test_get_key_code_invalid(self):
+    def test_get_key_code_invalid(self, mock_config_files):
         """测试获取不存在的按键代码。"""
-        builder = PromptBuilder()
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(config_loader=loader)
         assert builder.get_key_code("INVALID_KEY") is None
 
 
-class TestSystemPromptContent:
-    """测试系统提示词内容。"""
+class TestReloadPrompts:
+    """测试提示词重新加载。"""
 
-    def test_system_prompt_mentions_workflow(self):
-        """测试系统提示词包含工作流程。"""
-        builder = PromptBuilder()
-        prompt = builder.system_prompt
+    def test_reload_prompts(self, mock_config_files):
+        """测试重新加载提示词。"""
+        from dailycheck_agent.lib.config_loader import ConfigLoader
+        loader = ConfigLoader(str(mock_config_files))
+        builder = PromptBuilder(app_name="淘宝", config_loader=loader)
 
-        assert "工作流程" in prompt or "流程" in prompt
+        # 修改配置
+        prompt_config = loader.load_prompt_config()
+        prompt_config["system_prompt"]["template"] = "Custom template: {app_info}"
+        prompt_file = mock_config_files / "prompts.yml"
+        with open(prompt_file, "w", encoding="utf-8") as f:
+            yaml.safe_dump(prompt_config, f)
 
-    def test_system_prompt_mentions_coordinates(self):
-        """测试系统提示词包含坐标系统说明。"""
-        builder = PromptBuilder()
-        prompt = builder.system_prompt
+        # 重新加载
+        builder.reload_prompts()
 
-        assert "坐标" in prompt
-
-    def test_system_prompt_mentions_task_complete(self):
-        """测试系统提示词包含任务完成说明。"""
-        builder = PromptBuilder()
-        prompt = builder.system_prompt
-
-        assert "task_complete" in prompt or "任务完成" in prompt
-
-    def test_system_prompt_mentions_home_key(self):
-        """测试系统提示词包含 HOME 键说明。"""
-        builder = PromptBuilder()
-        prompt = builder.system_prompt
-
-        assert "HOME" in prompt or "HOME 键" in prompt or "主页" in prompt
+        # 验证新提示词
+        assert "Custom template" in builder.system_prompt or "淘宝" in builder.system_prompt

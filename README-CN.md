@@ -76,6 +76,33 @@ mv scrcpy-* scrcpy
 
 其他平台请从 [scrcpy 发布页](https://github.com/Genymobile/scrcpy/releases) 下载对应版本。
 
+### ADB 设置（Android 设备）
+
+在使用 DailyCheck-Agent 之前，您需要在 Android 设备上启用 ADB 调试：
+
+#### 步骤 1：启用开发者选项
+
+1. 打开设备上的 **设置**
+2. 进入 **关于手机**
+3. 找到 **版本号**（小米设备为 **MIUI 版本**）
+4. 快速点击 **7 次**，直到看到"您已处于开发者模式！"的提示
+
+#### 步骤 2：启用 USB 调试
+
+1. 进入 **设置** > **更多设置** > **开发者选项**
+2. 找到并启用 **USB 调试**
+
+![启用 USB 调试](assets/adb_setup_1.jpg)
+
+#### 步骤 3：设置 USB 配置为 RNDIS
+
+1. 在开发者选项中，找到 **USB 配置** 或 **默认 USB 配置**
+2. 选择 **RNDIS (USB 以太网)** 模式
+
+![设置 USB 为 RNDIS](assets/adb_setup_2.jpg)
+
+> **注意：** 具体菜单名称可能因设备制造商和 Android 版本而异。
+
 ---
 
 ## 配置
@@ -134,11 +161,14 @@ tasks:
 ### 方式一：使用 `dailycheck` 命令（推荐）
 
 ```bash
-# 基础用法（使用默认任务）
+# 基础用法（运行所有任务）
 dailycheck
 
 # 指定任务
 dailycheck taobao_checkin
+
+# 列出所有可用任务
+dailycheck --list-tasks
 
 # 自定义选项
 dailycheck taobao_checkin --api-provider open-router --max-steps 50
@@ -158,6 +188,30 @@ python -m dailycheck_agent taobao_checkin
 ```bash
 chmod +x run.sh
 ./run.sh taobao_checkin open-router
+```
+
+### 终端界面
+
+代理采用类似 claude-code 风格的终端用户界面，显示：
+
+- **进度条** - 实时可视化任务完成进度
+- **任务列表** - 所有任务及其状态（○ 待处理，● 运行中，✅ 成功，❌ 失败）
+- **当前动作** - 转圈动画配合当前步骤数和动作描述
+- **整洁输出** - 日志写入 `~/.dailycheck/logs/dailycheck.log`，控制台只显示错误
+
+示例输出：
+```
+DailyCheck Agent
+
+[████████████░░░░░░░░░░░░░░░░░] 2/0/5
+
+Tasks:
+  ✅ 阿里云盘签到
+  ● ▶ 淘宝领取淘金币
+      Tap the 淘宝 icon
+
+Progress:
+  ⠙ 15/50 Tap the 淘宝 icon
 ```
 
 ---
@@ -190,11 +244,15 @@ dailycheck-agent/
 │       ├── api_request.py # LLM API 请求
 │       ├── config_loader.py # 配置加载器
 │       ├── prompt.py      # 提示词构建
+│       ├── tui.py         # 终端界面
 │       └── render.py      # 屏幕渲染
 ├── config/
 │   ├── api.yml            # API 配置
-│   └── tasks.yml          # 任务配置
+│   ├── tasks.yml          # 任务配置
+│   └── prompts.yml        # 提示词模板
 ├── scrcpy/                # ADB 工具
+├── tests/                 # 测试套件
+├── assets/                # 媒体文件
 ├── pyproject.toml         # 项目配置
 └── run.sh                 # 启动脚本（旧版）
 ```

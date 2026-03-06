@@ -49,7 +49,9 @@ class TestDailyCheckAgentInit:
 
     def test_init_task_not_found(self, mock_config_files):
         """测试任务不存在时的异常。"""
-        with pytest.raises(KeyError, match="invalid_task"):
+        from dailycheck_agent.lib.config_loader import TaskNotFoundError
+        
+        with pytest.raises(TaskNotFoundError, match="invalid_task"):
             DailyCheckAgent(
                 task_name="invalid_task",
                 config_dir=str(mock_config_files),

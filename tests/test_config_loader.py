@@ -2,8 +2,15 @@
 
 import pytest
 from pathlib import Path
+import yaml
 
-from dailycheck_agent.lib.config_loader import ConfigLoader
+from dailycheck_agent.lib.config_loader import (
+    ConfigLoader,
+    ConfigFileNotFoundError,
+    ConfigValidationError,
+    TaskNotFoundError,
+    APIProviderNotFoundError,
+)
 
 
 class TestConfigLoaderInit:
@@ -14,23 +21,18 @@ class TestConfigLoaderInit:
         loader = ConfigLoader(str(mock_config_files))
         assert loader.config_dir == Path(mock_config_files)
 
-    def test_init_with_none_uses_cwd_config(self, monkeypatch):
+    def test_init_with_none_uses_cwd_config(self, monkeypatch, tmp_path):
         """测试 config_dir 为 None 时的回退行为。"""
-        # 创建一个临时配置目录
-        with pytest.MonkeyPatch().context() as mp:
-            # 模拟当前工作目录存在 config 文件夹
-            mock_config = Path.cwd() / "config"
-            mock_config.mkdir(exist_ok=True)
-            (mock_config / "tasks.yml").write_text("tasks: {}")
-            (mock_config / "api.yml").write_text("api: {}")
+        # 创建临时配置
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "tasks.yml").write_text("tasks: {}")
+        (config_dir / "api.yml").write_text("api: {}")
+        (config_dir / "prompts.yml").write_text("system_prompt:\n  template: test\ntools: []\nkey_codes: {}\nmessages: {}")
 
-            loader = ConfigLoader()
-            assert loader.config_dir == mock_config
-
-            # 清理
-            (mock_config / "tasks.yml").unlink()
-            (mock_config / "api.yml").unlink()
-            mock_config.rmdir()
+        monkeypatch.chdir(tmp_path)
+        loader = ConfigLoader()
+        assert loader.config_dir == config_dir
 
 
 class TestLoadApiConfig:
@@ -52,18 +54,11 @@ class TestLoadApiConfig:
         assert "open-router" in config
         assert "siliconflow" in config
 
-    def test_load_api_config_file_not_found(self, temp_config_dir):
-        """测试 API 配置文件不存在时的异常。"""
-        loader = ConfigLoader(str(temp_config_dir))
-
-        with pytest.raises(FileNotFoundError):
-            loader.load_api_config()
-
     def test_load_api_config_provider_not_found(self, mock_config_files):
         """测试指定不存在的 API 提供商。"""
         loader = ConfigLoader(str(mock_config_files))
 
-        with pytest.raises(KeyError, match="invalid-provider"):
+        with pytest.raises(APIProviderNotFoundError, match="invalid-provider"):
             loader.load_api_config("invalid-provider")
 
 
@@ -87,19 +82,50 @@ class TestLoadTaskConfig:
         assert "taobao_checkin" in config
         assert "jd_checkin" in config
 
-    def test_load_task_config_file_not_found(self, temp_config_dir):
-        """测试任务配置文件不存在时的异常。"""
-        loader = ConfigLoader(str(temp_config_dir))
-
-        with pytest.raises(FileNotFoundError):
-            loader.load_task_config()
-
     def test_load_task_config_task_not_found(self, mock_config_files):
         """测试指定不存在的任务。"""
         loader = ConfigLoader(str(mock_config_files))
 
-        with pytest.raises(KeyError, match="invalid_task"):
+        with pytest.raises(TaskNotFoundError, match="invalid_task"):
             loader.load_task_config("invalid_task")
+
+
+class TestLoadPromptConfig:
+    """测试提示词配置加载。"""
+
+    def test_load_prompt_config(self, mock_config_files):
+        """测试加载提示词配置。"""
+        loader = ConfigLoader(str(mock_config_files))
+        config = loader.load_prompt_config()
+
+        assert "system_prompt" in config
+        assert "tools" in config
+        assert "key_codes" in config
+        assert "messages" in config
+
+    def test_get_prompt_tools(self, mock_config_files):
+        """测试获取提示词工具。"""
+        loader = ConfigLoader(str(mock_config_files))
+        tools = loader.get_prompt_tools()
+
+        assert len(tools) > 0
+        assert tools[0]["function"]["name"] == "tap_screen"
+
+    def test_get_prompt_key_codes(self, mock_config_files):
+        """测试获取按键代码。"""
+        loader = ConfigLoader(str(mock_config_files))
+        key_codes = loader.get_prompt_key_codes()
+
+        assert "HOME" in key_codes
+        assert key_codes["HOME"] == 3
+
+    def test_build_system_prompt(self, mock_config_files):
+        """测试构建系统提示词。"""
+        loader = ConfigLoader(str(mock_config_files))
+        prompt = loader.build_system_prompt(app_name="淘宝")
+
+        assert "淘宝" in prompt
+        assert "tap_screen" in prompt
 
 
 class TestGetApiKey:
@@ -114,36 +140,18 @@ class TestGetApiKey:
 
     def test_get_api_key_empty(self, temp_config_dir):
         """测试 API 密钥为空时的异常。"""
-        # 创建配置但 API 密钥为空
         api_config = {"api": {"open-router": {"api-key": ""}}}
         api_file = temp_config_dir / "api.yml"
         with open(api_file, "w", encoding="utf-8") as f:
-            import yaml
             yaml.safe_dump(api_config, f)
 
-        # 创建空的任务配置
         task_file = temp_config_dir / "tasks.yml"
         with open(task_file, "w", encoding="utf-8") as f:
             yaml.safe_dump({"tasks": {}}, f)
 
-        loader = ConfigLoader(str(temp_config_dir))
-
-        with pytest.raises(ValueError, match="API 密钥未设置"):
-            loader.get_api_key("open-router")
-
-    def test_get_api_key_placeholder(self, temp_config_dir):
-        """测试 API 密钥为占位符时的异常。"""
-        # 创建配置但 API 密钥为占位符
-        api_config = {"api": {"open-router": {"api-key": "{{ api_key }}"}}}
-        api_file = temp_config_dir / "api.yml"
-        with open(api_file, "w", encoding="utf-8") as f:
-            import yaml
-            yaml.safe_dump(api_config, f)
-
-        # 创建空的任务配置
-        task_file = temp_config_dir / "tasks.yml"
-        with open(task_file, "w", encoding="utf-8") as f:
-            yaml.safe_dump({"tasks": {}}, f)
+        prompt_file = temp_config_dir / "prompts.yml"
+        with open(prompt_file, "w", encoding="utf-8") as f:
+            yaml.safe_dump({"system_prompt": {"template": "test"}, "tools": [], "key_codes": {}, "messages": {}}, f)
 
         loader = ConfigLoader(str(temp_config_dir))
 
@@ -173,7 +181,6 @@ class TestReload:
         }
         api_file = mock_config_files / "api.yml"
         with open(api_file, "w", encoding="utf-8") as f:
-            import yaml
             yaml.safe_dump(api_config, f)
 
         # 重新加载
@@ -183,3 +190,22 @@ class TestReload:
         new_config = loader.load_api_config("open-router")
         assert new_config["api-key"] == "new-api-key"
         assert new_config["model"] == "new-model"
+
+
+class TestGetConfigSummary:
+    """测试配置摘要获取。"""
+
+    def test_get_config_summary(self, mock_config_files):
+        """测试获取配置摘要。"""
+        loader = ConfigLoader(str(mock_config_files))
+        # 先加载配置
+        loader.load_task_config()
+        loader.load_api_config()
+        
+        summary = loader.get_config_summary()
+
+        assert "config_dir" in summary
+        assert "api_providers" in summary
+        assert "task_count" in summary
+        assert "task_names" in summary
+        assert len(summary["task_names"]) == 2

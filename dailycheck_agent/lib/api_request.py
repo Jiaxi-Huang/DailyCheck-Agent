@@ -59,7 +59,7 @@ class LLMClient:
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
         tool_choice: str = "auto",
-        temperature: float = 0.1,
+        temperature: float = 0.2,
         max_tokens: Optional[int] = None,
     ) -> Tuple[Optional[str], List[Dict[str, Any]]]:
         """发送聊天请求。

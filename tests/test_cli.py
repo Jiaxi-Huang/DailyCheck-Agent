@@ -267,7 +267,7 @@ class TestMain:
 
     def test_main_task_failure(self, mock_config_files, capsys):
         """测试任务失败。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = False
             mock_agent_class.return_value = mock_agent
@@ -281,7 +281,7 @@ class TestMain:
 
     def test_main_exception_handling(self, mock_config_files, capsys):
         """测试异常处理。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent_class.side_effect = Exception("Test exception")
 
             with patch.object(sys, "argv", ["dailycheck", "taobao_checkin", "--config-dir", str(mock_config_files)]):

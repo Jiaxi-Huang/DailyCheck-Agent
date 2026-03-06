@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+import time
 from pathlib import Path
 
 import yaml
@@ -10,6 +11,7 @@ import yaml
 from dailycheck_agent.lib.config_loader import ConfigLoader
 from dailycheck_agent.lib.tui import TaskTUI
 from dailycheck_agent.main import DailyCheckAgent
+
 
 # Configure logging to file during TUI execution
 LOG_FILE = Path.home() / ".dailycheck" / "logs" / "dailycheck.log"
@@ -248,6 +250,9 @@ def main():
         except Exception as e:
             tui.complete_task(task_name, success=False, error=str(e))
             results.append((task_name, False))
+
+    # Brief pause to allow final render to complete
+    time.sleep(0.2)
 
     # Stop TUI
     tui.stop()

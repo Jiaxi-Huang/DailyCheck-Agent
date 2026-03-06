@@ -3,7 +3,6 @@
 import argparse
 import logging
 import sys
-import time
 from pathlib import Path
 
 import yaml
@@ -249,9 +248,6 @@ def main():
         except Exception as e:
             tui.complete_task(task_name, success=False, error=str(e))
             results.append((task_name, False))
-
-    # Brief pause to allow final render to complete
-    time.sleep(0.2)
 
     # Stop TUI
     tui.stop()

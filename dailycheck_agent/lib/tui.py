@@ -384,12 +384,6 @@ class TaskTUI:
 
         if self.state.current_task == task_name:
             self.state.current_task = ""
-        
-        # Trigger immediate render to update display
-        if self.state.running:
-            with self._output_lock:
-                self.state.spinner_index += 1
-                self._render()
 
     def log(self, message: str) -> None:
         """Add a log message.

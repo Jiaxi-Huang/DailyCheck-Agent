@@ -1,7 +1,7 @@
 api:
   open-router:
     model: "z-ai/glm-4.7-flash"
-    api-key: "{{ api_key }}"
+    api-key: "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"
   siliconflow:
     model: "Pro/zai-org/GLM-4.7"
     api-key: "{{ api_key }}"

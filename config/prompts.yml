@@ -1,0 +1,155 @@
+# Prompt Configuration for DailyCheck-Agent
+# This file contains all customizable prompts and tool definitions
+
+# System prompt template
+# Variables: {app_info} - will be replaced with target app information
+system_prompt:
+  template: |
+    你是一个安卓手机自动化打卡助手，{app_info}。
+    你一开始在手机主页。
+
+    ## 可用工具
+    你可以使用以下工具与设备交互：
+    {tools_description}
+
+    ## 工作流程
+    1. 分析当前屏幕上的 UI 元素信息（文本、描述、坐标等）
+    2. 根据任务目标决策下一步操作
+    3. 调用相应的工具执行操作
+    4. 等待操作结果和新屏幕信息
+    5. 重复上述步骤直到任务完成
+
+    ## 任务完成判定
+    - 当你认为已经完成了打卡任务的核心操作（如点击了签到按钮、领取了奖励等），即使当前页面跳转到了其他页面（如活动详情页、奖励页等），也视为任务已完成
+    - 任务完成后，先按 HOME 键回到手机主页
+    - 然后调用 task_complete 工具报告任务完成
+
+    ## 注意事项
+    - 坐标系统：(0, 0) 是屏幕左上角
+    - 每次操作后屏幕会更新，请根据最新屏幕信息决策
+    - 如果找不到目标元素，尝试通过按 BACK键 从而返回上一页
+    - 任务完成后务必先按 HOME键 回到主页，再调用 task_complete 工具
+
+    请根据屏幕信息中的元素坐标做出正确的决策，必须调用工具来执行动作。
+
+  # App info templates
+  app_info_templates:
+    with_app: "目标应用是【{app_name}】"
+    without_app: "目标应用由任务决定"
+
+# Tool definitions
+tools:
+  - type: function
+    function:
+      name: tap_screen
+      description: 点击屏幕上的指定坐标
+      parameters:
+        type: object
+        properties:
+          x:
+            type: integer
+            description: 水平坐标（X 轴）
+          y:
+            type: integer
+            description: 垂直坐标（Y 轴）
+        required:
+          - x
+          - y
+
+  - type: function
+    function:
+      name: slide_screen
+      description: 在屏幕上从一个坐标滑动到另一个坐标，用于滚动或解锁
+      parameters:
+        type: object
+        properties:
+          start_x:
+            type: integer
+            description: 起始 X 坐标
+          start_y:
+            type: integer
+            description: 起始 Y 坐标
+          end_x:
+            type: integer
+            description: 结束 X 坐标
+          end_y:
+            type: integer
+            description: 结束 Y 坐标
+          duration:
+            type: integer
+            description: 滑动持续时间（毫秒）
+            default: 300
+        required:
+          - start_x
+          - start_y
+          - end_x
+          - end_y
+
+  - type: function
+    function:
+      name: press_key
+      description: 按下系统按键（如 Home、Back、Enter 等）
+      parameters:
+        type: object
+        properties:
+          key_code:
+            type: string
+            description: 按键名称，如 HOME、BACK、ENTER、APP_SWITCH
+        required:
+          - key_code
+
+  - type: function
+    function:
+      name: input_text
+      description: 在当前聚焦的输入框中输入文本
+      parameters:
+        type: object
+        properties:
+          text:
+            type: string
+            description: 要输入的文本内容
+        required:
+          - text
+
+  - type: function
+    function:
+      name: task_complete
+      description: 标记当前任务已成功完成
+      parameters:
+        type: object
+        properties:
+          summary:
+            type: string
+            description: 简要描述完成的任务和达成的结果
+        required: []
+
+# Key codes mapping
+key_codes:
+  HOME: 3
+  BACK: 4
+  ENTER: 66
+  APP_SWITCH: 187
+  MENU: 82
+  VOLUME_UP: 24
+  VOLUME_DOWN: 25
+  POWER: 26
+
+# Message templates
+messages:
+  # User message template
+  user_message:
+    step_prefix: "【第 {step} 回合】"
+    error_prefix: "⚠️ 上一步操作失败：{error_message}"
+    screen_info_prefix: "当前屏幕上的可用元素如下，请分析并采取下一步操作："
+    task_prefix: "当前任务："
+
+  # Fallback message (when LLM forgets to call tools)
+  fallback_message: |
+    你刚才只是回复了文本而没有调用任何工具。
+    请务必使用 tap_screen、slide_screen、press_key 或 input_text 进行下一步操作，
+    或者使用 task_complete 结束任务。
+
+  # Tool result template
+  tool_result:
+    success_prefix: "执行成功："
+    new_screen_prefix: "。当前最新的屏幕元素如下：\n"

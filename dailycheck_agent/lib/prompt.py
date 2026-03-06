@@ -1,182 +1,87 @@
-"""提示词构建模块 - 构建 LLM 的系统提示词和工具定义。"""
+"""提示词构建模块 - 构建 LLM 的系统提示词和工具定义。
+
+This module provides the PromptBuilder class which uses external prompt
+configurations loaded via ConfigLoader. Prompts are defined in config/prompts.yml
+instead of being hardcoded.
+
+Example:
+    >>> builder = PromptBuilder(app_name="WeChat")
+    >>> system_msg = builder.build_system_message()
+    >>> user_msg = builder.build_user_message(screen_info="...", step=1)
+"""
 
 from typing import Any, Dict, List, Optional
 
-
-# 工具定义列表（遵循 SKILLS.md 规范）
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "tap_screen",
-            "description": "点击屏幕上的指定坐标",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "x": {"type": "integer", "description": "水平坐标（X 轴）"},
-                    "y": {"type": "integer", "description": "垂直坐标（Y 轴）"},
-                },
-                "required": ["x", "y"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "slide_screen",
-            "description": "在屏幕上从一个坐标滑动到另一个坐标，用于滚动或解锁",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "start_x": {"type": "integer", "description": "起始 X 坐标"},
-                    "start_y": {"type": "integer", "description": "起始 Y 坐标"},
-                    "end_x": {"type": "integer", "description": "结束 X 坐标"},
-                    "end_y": {"type": "integer", "description": "结束 Y 坐标"},
-                    "duration": {
-                        "type": "integer",
-                        "description": "滑动持续时间（毫秒）",
-                        "default": 300,
-                    },
-                },
-                "required": ["start_x", "start_y", "end_x", "end_y"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "press_key",
-            "description": "按下系统按键（如 Home、Back、Enter 等）",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "key_code": {
-                        "type": "string",
-                        "description": "按键名称，如 HOME、BACK、ENTER、APP_SWITCH",
-                    }
-                },
-                "required": ["key_code"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "input_text",
-            "description": "在当前聚焦的输入框中输入文本",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string", "description": "要输入的文本内容"}
-                },
-                "required": ["text"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "task_complete",
-            "description": "标记当前任务已成功完成",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "summary": {
-                        "type": "string",
-                        "description": "简要描述完成的任务和达成的结果",
-                    }
-                },
-                "required": [],
-            },
-        },
-    },
-]
-
-# 常用按键代码映射
-KEY_CODES = {
-    "HOME": 3,
-    "BACK": 4,
-    "ENTER": 66,
-    "APP_SWITCH": 187,
-    "MENU": 82,
-    "VOLUME_UP": 24,
-    "VOLUME_DOWN": 25,
-    "POWER": 26,
-}
+from dailycheck_agent.lib.config_loader import ConfigLoader
 
 
 class PromptBuilder:
-    """提示词构建器，负责生成系统提示词和格式化用户消息。"""
+    """提示词构建器，负责生成系统提示词和格式化用户消息。
+
+    Uses ConfigLoader to load prompts from external configuration files.
+
+    Attributes:
+        task_description: Task description string
+        app_name: Target application name
+        config_loader: ConfigLoader instance
+
+    Example:
+        >>> builder = PromptBuilder(app_name="WeChat", task_description="Sign in")
+        >>> tools = builder.get_tools()
+        >>> print(builder.build_system_message()["content"][:100])
+    """
 
     def __init__(
         self,
         system_prompt: Optional[str] = None,
         task_description: Optional[str] = None,
         app_name: Optional[str] = None,
+        config_loader: Optional[ConfigLoader] = None,
     ):
         """初始化提示词构建器。
 
         Args:
-            system_prompt: 自定义系统提示词，如果为 None 则使用默认
+            system_prompt: 自定义系统提示词，如果为 None 则使用配置文件中的模板
             task_description: 任务描述
             app_name: 目标应用名称
+            config_loader: ConfigLoader 实例，如果为 None 则创建新实例
+
+        Example:
+            >>> # Use default config loader
+            >>> builder = PromptBuilder(app_name="WeChat")
+            >>> # Use custom config loader
+            >>> loader = ConfigLoader(config_dir="/custom/config")
+            >>> builder = PromptBuilder(config_loader=loader)
         """
-        self.system_prompt = system_prompt or self._build_default_system_prompt(app_name)
         self.task_description = task_description
         self.app_name = app_name
+        self.config_loader = config_loader or ConfigLoader()
 
-    def _build_default_system_prompt(self, app_name: Optional[str] = None) -> str:
-        """构建默认系统提示词。
-
-        Args:
-            app_name: 目标应用名称
-
-        Returns:
-            系统提示词字符串
-        """
-        app_info = f"目标应用是【{app_name}】" if app_name else "目标应用由任务决定"
-
-        return f"""你是一个安卓手机自动化打卡助手，{app_info}。
-你一开始在手机主页。
-
-## 可用工具
-你可以使用以下工具与设备交互：
-- tap_screen: 点击屏幕指定坐标
-- slide_screen: 滑动屏幕（用于滚动或解锁）
-- press_key: 按下系统按键（HOME、BACK、ENTER 等）
-- input_text: 输入文本
-- task_complete: 任务完成时调用
-
-## 工作流程
-1. 分析当前屏幕上的 UI 元素信息（文本、描述、坐标等）
-2. 根据任务目标决策下一步操作
-3. 调用相应的工具执行操作
-4. 等待操作结果和新屏幕信息
-5. 重复上述步骤直到任务完成
-
-## 任务完成判定
-- 当你认为已经完成了打卡任务的核心操作（如点击了签到按钮、领取了奖励等），即使当前页面跳转到了其他页面（如活动详情页、奖励页等），也视为任务已完成
-- 任务完成后，先按 HOME 键回到手机主页
-- 然后调用 task_complete 工具报告任务完成
-
-## 注意事项
-- 坐标系统：(0, 0) 是屏幕左上角
-- 每次操作后屏幕会更新，请根据最新屏幕信息决策
-- 如果找不到目标元素，可以尝试滑动屏幕或返回上一页
-- 任务完成后务必先按 HOME 键回到主页，再调用 task_complete 工具
-
-请根据屏幕信息中的元素坐标做出正确的决策，必须调用工具来执行动作。"""
+        # Build or use custom system prompt
+        if system_prompt:
+            self.system_prompt = system_prompt
+        else:
+            self.system_prompt = self.config_loader.build_system_prompt(app_name)
 
     def build_system_message(self) -> Dict[str, str]:
         """构建系统消息。
 
         Returns:
-            系统消息字典
+            系统消息字典 {"role": "system", "content": "..."}
+
+        Example:
+            >>> builder = PromptBuilder(app_name="WeChat")
+            >>> msg = builder.build_system_message()
+            >>> print(msg["role"])
+            system
         """
         return {"role": "system", "content": self.system_prompt}
 
     def build_user_message(
-        self, screen_info: str, step: Optional[int] = None, error_message: Optional[str] = None
+        self,
+        screen_info: str,
+        step: Optional[int] = None,
+        error_message: Optional[str] = None,
     ) -> Dict[str, str]:
         """构建用户消息。
 
@@ -186,26 +91,23 @@ class PromptBuilder:
             error_message: 错误信息（如果上一步操作失败）
 
         Returns:
-            用户消息字典
+            用户消息字典 {"role": "user", "content": "..."}
+
+        Example:
+            >>> builder = PromptBuilder(task_description="Sign in")
+            >>> msg = builder.build_user_message(
+            ...     screen_info="button: (100, 200)",
+            ...     step=1,
+            ...     error_message="Element not found"
+            ... )
+            >>> print(msg["content"])
         """
-        content_parts = []
-
-        # 添加步骤信息（如果有）
-        if step is not None:
-            content_parts.append(f"【第 {step} 回合】")
-
-        # 添加错误提示（如果有）
-        if error_message:
-            content_parts.append(f"⚠️ 上一步操作失败：{error_message}")
-
-        # 添加屏幕信息
-        content_parts.append(f"当前屏幕上的可用元素如下，请分析并采取下一步操作：\n{screen_info}")
-
-        # 添加任务描述（如果有）
-        if self.task_description:
-            content_parts.append(f"\n当前任务：{self.task_description}")
-
-        content = "\n".join(content_parts)
+        content = self.config_loader.format_user_message(
+            screen_info=screen_info,
+            step=step,
+            error_message=error_message,
+            task_description=self.task_description,
+        )
         return {"role": "user", "content": content}
 
     def build_tool_result_message(
@@ -219,7 +121,15 @@ class PromptBuilder:
             result: 执行结果描述
 
         Returns:
-            工具结果消息字典
+            工具结果消息字典 {"role": "tool", "tool_call_id": "...", "name": "...", "content": "..."}
+
+        Example:
+            >>> builder = PromptBuilder()
+            >>> msg = builder.build_tool_result_message(
+            ...     tool_name="tap_screen",
+            ...     tool_call_id="call_123",
+            ...     result="Clicked at (100, 200)"
+            ... )
         """
         return {
             "role": "tool",
@@ -232,13 +142,16 @@ class PromptBuilder:
         """构建兜底提示消息（当 LLM 忘记调用工具时使用）。
 
         Returns:
-            兜底消息字典
+            兜底消息字典 {"role": "user", "content": "..."}
+
+        Example:
+            >>> builder = PromptBuilder()
+            >>> msg = builder.build_fallback_message()
+            >>> print(msg["content"][:50])
         """
         return {
             "role": "user",
-            "content": "你刚才只是回复了文本而没有调用任何工具。"
-            "请务必使用 tap_screen、slide_screen、press_key 或 input_text 进行下一步操作，"
-            "或者使用 task_complete 结束任务。",
+            "content": self.config_loader.get_prompt_fallback_message(),
         }
 
     def get_tools(self) -> List[Dict[str, Any]]:
@@ -246,16 +159,88 @@ class PromptBuilder:
 
         Returns:
             工具定义列表
+
+        Example:
+            >>> builder = PromptBuilder()
+            >>> tools = builder.get_tools()
+            >>> print(len(tools))
+            5
         """
-        return TOOLS
+        return self.config_loader.get_prompt_tools()
 
     def get_key_code(self, key_name: str) -> Optional[int]:
         """获取按键代码。
 
         Args:
-            key_name: 按键名称
+            key_name: 按键名称（如 "HOME", "BACK"）
 
         Returns:
             按键代码，如果不存在返回 None
+
+        Example:
+            >>> builder = PromptBuilder()
+            >>> print(builder.get_key_code("HOME"))
+            3
         """
-        return KEY_CODES.get(key_name.upper())
+        key_codes = self.config_loader.get_prompt_key_codes()
+        return key_codes.get(key_name.upper())
+
+    def reload_prompts(self):
+        """重新加载提示词配置。
+
+        This is useful when the prompt configuration file has been modified
+        and you want to apply the changes without restarting the application.
+
+        Example:
+            >>> builder = PromptBuilder(app_name="WeChat")
+            >>> # After modifying prompts.yml
+            >>> builder.reload_prompts()
+        """
+        self.config_loader.reload()
+        # Rebuild system prompt
+        self.system_prompt = self.config_loader.build_system_prompt(self.app_name)
+
+    def get_tool_names(self) -> List[str]:
+        """获取所有工具名称列表。
+
+        Returns:
+            工具名称列表
+
+        Example:
+            >>> builder = PromptBuilder()
+            >>> print(builder.get_tool_names())
+            ['tap_screen', 'slide_screen', 'press_key', 'input_text', 'task_complete']
+        """
+        tools = self.get_tools()
+        return [tool.get("function", {}).get("name", "") for tool in tools]
+
+    def get_config_summary(self) -> Dict[str, Any]:
+        """获取配置摘要信息。
+
+        Returns:
+            配置摘要字典
+
+        Example:
+            >>> builder = PromptBuilder()
+            >>> summary = builder.get_config_summary()
+            >>> print(summary['tool_count'])
+        """
+        return {
+            "tool_count": len(self.get_tools()),
+            "tool_names": self.get_tool_names(),
+            "key_codes_count": len(self.config_loader.get_prompt_key_codes()),
+            "has_system_prompt": bool(self.system_prompt),
+        }
+
+    def __repr__(self) -> str:
+        """返回提示词构建器的字符串表示。
+
+        Returns:
+            提示词构建器的字符串表示
+        """
+        summary = self.get_config_summary()
+        return (
+            f"PromptBuilder(app_name='{self.app_name}', "
+            f"tools={summary['tool_count']}, "
+            f"key_codes={summary['key_codes_count']})"
+        )

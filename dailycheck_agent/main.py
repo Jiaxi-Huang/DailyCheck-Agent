@@ -10,14 +10,13 @@ from typing import Any, Dict, List, Optional
 
 from dailycheck_agent.lib.api_request import LLMClient, create_llm_client
 from dailycheck_agent.lib.config_loader import ConfigLoader
-from dailycheck_agent.lib.prompt import KEY_CODES, PromptBuilder
+from dailycheck_agent.lib.prompt import PromptBuilder
 from dailycheck_agent.lib.render import ScreenRenderer
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Initialize config loader for key codes
+_config_loader = ConfigLoader()
+KEY_CODES = _config_loader.get_prompt_key_codes()
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +32,7 @@ class DailyCheckAgent:
         config_dir: Optional[str] = None,
         max_steps: int = 50,
         log_dir: Optional[str] = None,
+        callback: Optional[callable] = None,
     ):
         """初始化 DailyCheck 代理。
 
@@ -44,9 +44,11 @@ class DailyCheckAgent:
             config_dir: 配置文件目录
             max_steps: 最大执行步骤数
             log_dir: 日志目录
+            callback: 回调函数，用于 TUI 更新，接收 (event_type, data) 参数
         """
         self.task_name = task_name
         self.max_steps = max_steps
+        self.callback = callback
 
         # 加载配置
         self.config_loader = ConfigLoader(config_dir)
@@ -211,6 +213,10 @@ class DailyCheckAgent:
         logger.info(f"目标应用：{self.app_name}")
         logger.info(f"最大步骤数：{self.max_steps}")
 
+        # Notify TUI: task started
+        if self.callback:
+            self.callback("task_start", {"task_name": self.task_name, "app_name": self.app_name})
+
         self._running = True
         self._current_step = 0
 
@@ -222,6 +228,8 @@ class DailyCheckAgent:
             initial_screen = self.renderer.get_screen_info()
         except Exception as e:
             logger.error(f"获取初始屏幕信息失败：{e}")
+            if self.callback:
+                self.callback("task_error", {"error": str(e)})
             return False
 
         self.messages.append(
@@ -234,10 +242,15 @@ class DailyCheckAgent:
         # 主循环
         task_completed = False
         last_error = None
+        last_action = ""
 
         while self._running and self._current_step < self.max_steps:
             self._current_step += 1
             logger.info(f"\n{'='*20} 第 {self._current_step} 回合 {'='*20}")
+
+            # Notify TUI: step update
+            if self.callback:
+                self.callback("step_update", {"step": self._current_step, "action": last_action})
 
             # 打印当前消息摘要
             last_msg = self.messages[-1]
@@ -257,6 +270,7 @@ class DailyCheckAgent:
                 # 打印 AI 思考内容
                 if ai_msg.get("content"):
                     logger.info(f"AI 回复：{ai_msg['content']}")
+                    last_action = ai_msg.get("content", "")[:80]
 
                 # 处理工具调用
                 tool_calls = ai_msg.get("tool_calls", [])
@@ -273,9 +287,14 @@ class DailyCheckAgent:
                 tool_args = json.loads(tool["function"]["arguments"])
 
                 logger.info(f"AI 决定调用工具：{tool_name}, 参数：{tool_args}")
+                last_action = f"{tool_name}({tool_args})"
 
                 # 执行工具
                 tool_result = self._execute_tool(tool_name, tool_args, tool_call_id)
+
+                # Notify TUI: action executed
+                if self.callback:
+                    self.callback("action_executed", {"tool": tool_name, "args": tool_args, "result": tool_result[:100] if tool_result else ""})
 
                 # 保存工具结果
                 self.messages.append(
@@ -294,6 +313,10 @@ class DailyCheckAgent:
                     # 先按 HOME 键回到主页
                     logger.info("正在按 HOME 键回到主页...")
                     self.renderer.press_key(3)  # HOME key code
+                    
+                    # Notify TUI: task completed
+                    if self.callback:
+                        self.callback("task_complete", {"success": True, "summary": summary})
                     break
 
             except Exception as e:
@@ -312,8 +335,12 @@ class DailyCheckAgent:
         if not task_completed:
             if self._current_step >= self.max_steps:
                 logger.warning(f"⚠️ 已达最大步骤数 ({self.max_steps})，任务强制结束")
+                if self.callback:
+                    self.callback("task_complete", {"success": False, "error": "已达最大步骤数"})
             else:
                 logger.warning("⚠️ 任务未正常完成")
+                if self.callback:
+                    self.callback("task_complete", {"success": False, "error": last_error or "任务未完成"})
 
         # 保存日志
         summary = "任务完成" if task_completed else f"任务未完成（步骤：{self._current_step}, 错误：{last_error})"

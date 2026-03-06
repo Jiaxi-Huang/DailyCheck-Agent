@@ -215,7 +215,7 @@ class TestMain:
 
     def test_main_with_custom_params(self, mock_config_files, capsys):
         """测试使用自定义参数。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -248,7 +248,7 @@ class TestMain:
 
     def test_main_adb_path_not_exists(self, mock_config_files, capsys):
         """测试 ADB 路径不存在时的回退。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -311,7 +311,7 @@ class TestMainConfigPriority:
                 f,
             )
 
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -342,7 +342,7 @@ class TestMainConfigPriority:
                 f,
             )
 
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent

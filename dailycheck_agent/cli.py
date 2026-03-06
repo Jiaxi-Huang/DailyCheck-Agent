@@ -200,7 +200,6 @@ def main():
 
     # Print banner
     print_banner()
-    print()
 
     # Configure logging to file (only if not already configured)
     if not logging.getLogger().handlers:

@@ -171,8 +171,8 @@ class TestMain:
 
     def test_main_no_tasks_specified(self, mock_config_files, capsys):
         """测试未指定任务时执行所有任务。"""
-        # Patch DailyCheckAgent where it's defined, not where it's imported
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        # Patch DailyCheckAgent where it's imported (in cli module)
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -187,7 +187,7 @@ class TestMain:
 
     def test_main_single_task(self, mock_config_files, capsys):
         """测试执行单个任务。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -215,7 +215,7 @@ class TestMain:
 
     def test_main_with_custom_params(self, mock_config_files, capsys):
         """测试使用自定义参数。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -248,7 +248,7 @@ class TestMain:
 
     def test_main_adb_path_not_exists(self, mock_config_files, capsys):
         """测试 ADB 路径不存在时的回退。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -267,7 +267,7 @@ class TestMain:
 
     def test_main_task_failure(self, mock_config_files, capsys):
         """测试任务失败。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = False
             mock_agent_class.return_value = mock_agent
@@ -281,7 +281,7 @@ class TestMain:
 
     def test_main_exception_handling(self, mock_config_files, capsys):
         """测试异常处理。"""
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent_class.side_effect = Exception("Test exception")
 
             with patch.object(sys, "argv", ["dailycheck", "taobao_checkin", "--config-dir", str(mock_config_files)]):
@@ -311,7 +311,7 @@ class TestMainConfigPriority:
                 f,
             )
 
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent
@@ -342,7 +342,7 @@ class TestMainConfigPriority:
                 f,
             )
 
-        with patch("dailycheck_agent.main.DailyCheckAgent") as mock_agent_class:
+        with patch("dailycheck_agent.cli.DailyCheckAgent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run.return_value = True
             mock_agent_class.return_value = mock_agent

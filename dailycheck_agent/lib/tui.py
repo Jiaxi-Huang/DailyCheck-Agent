@@ -191,13 +191,14 @@ class TaskTUI:
         """Spinner animation loop."""
         while not self._stop_event.is_set():
             with self._output_lock:
+                self.state.spinner_index += 1
                 self._render()
             time.sleep(self.refresh_rate)
 
     def _render(self) -> None:
         """Render the current state to terminal."""
-        # Move cursor to home position
-        print("\033[H", end="", flush=True)
+        # Clear screen and move cursor to home position
+        print("\033[2J\033[H", end="", flush=True)
 
         # Header
         self._render_header()
@@ -211,6 +212,9 @@ class TaskTUI:
         # Logs
         if self.show_logs:
             self._render_logs()
+
+        # Clear remaining lines from previous render
+        print("\033[J", end="", flush=True)
 
         sys.stdout.flush()
 
@@ -273,10 +277,11 @@ class TaskTUI:
         total = self.state.total_steps
 
         print(f"{COLORS['bold']}Progress:{COLORS['reset']}")
+        action_display = task.current_action[:80] if task.current_action else ""
         print(
             f"  {COLORS['yellow']}{spinner}{COLORS['reset']} "
             f"{COLORS['bright_cyan']}{step}/{total}{COLORS['reset']} "
-            f"{COLORS['bold']}{task.current_action}{COLORS['reset']}"
+            f"{COLORS['bold']}{action_display}{COLORS['reset']}"
         )
 
         if task.last_log:
@@ -379,6 +384,12 @@ class TaskTUI:
 
         if self.state.current_task == task_name:
             self.state.current_task = ""
+
+        # Trigger immediate render to update display
+        if self.state.running:
+            with self._output_lock:
+                self.state.spinner_index += 1
+                self._render()
 
     def log(self, message: str) -> None:
         """Add a log message.

@@ -3,12 +3,15 @@
 import argparse
 import logging
 import sys
+import time
 from pathlib import Path
 
 import yaml
 
 from dailycheck_agent.lib.config_loader import ConfigLoader
 from dailycheck_agent.lib.tui import TaskTUI
+from dailycheck_agent.main import DailyCheckAgent
+
 
 # Configure logging to file during TUI execution
 LOG_FILE = Path.home() / ".dailycheck" / "logs" / "dailycheck.log"
@@ -169,23 +172,24 @@ def main():
     # TUI callback
     def tui_callback(event_type: str, data: dict):
         if event_type == "task_start":
-            tui.start_task(data.get("task_name"))
+            task_name = data.get("task_name")
+            if task_name:
+                tui.start_task(task_name)
         elif event_type == "step_update":
             tui.update_step(step=data.get("step", 0), action=data.get("action", ""))
         elif event_type == "action_executed":
             tool = data.get("tool", "")
             args_data = data.get("args", {})
+            # Format args as a simple string, not raw dict
+            if args_data:
+                args_str = ", ".join(f"{k}={v}" for k, v in args_data.items() if not k.startswith("_"))
+                action_text = f"{tool}({args_str})"
+            else:
+                action_text = f"{tool}()"
             tui.update_step(
                 step=tui.state.current_step,
-                action=f"{tool}({args_data})",
+                action=action_text,
                 log=f"Executed {tool}",
-            )
-        elif event_type == "task_complete":
-            success = data.get("success", False)
-            tui.complete_task(
-                task_name=tui.state.current_task,
-                success=success,
-                error=data.get("error", ""),
             )
         elif event_type == "task_error":
             tui.set_error(data.get("error", "Unknown error"))
@@ -228,8 +232,6 @@ def main():
             continue
 
         try:
-            from dailycheck_agent.main import DailyCheckAgent
-
             agent = DailyCheckAgent(
                 task_name=task_name,
                 adb_path=adb_path,
@@ -242,12 +244,15 @@ def main():
             success = agent.run()
             results.append((task_name, success))
 
-            if not success:
-                tui.complete_task(task_name, success=False, error="Agent run failed")
+            # Mark task as complete (success or failure)
+            tui.complete_task(task_name, success=success, error="" if success else "Agent run failed")
 
         except Exception as e:
             tui.complete_task(task_name, success=False, error=str(e))
             results.append((task_name, False))
+
+    # Brief pause to allow final render to complete
+    time.sleep(0.2)
 
     # Stop TUI
     tui.stop()

@@ -93,6 +93,21 @@ class LLMClient:
             payload["max_tokens"] = max_tokens
 
         last_error = None
+        
+        # 调试日志：记录请求详情
+        import logging
+        logger = logging.getLogger("dailycheck")
+        logger.debug(f"发送请求到：{self.api_url}")
+        logger.debug(f"模型：{self.model}")
+        logger.debug(f"消息数量：{len(messages)}")
+        if messages:
+            last_msg = messages[-1]
+            if isinstance(last_msg.get("content"), list):
+                # VL 模式：content 是列表
+                for item in last_msg["content"]:
+                    if isinstance(item, dict) and item.get("type") == "image_url":
+                        img_url = item.get("image_url", {}).get("url", "")
+                        logger.debug(f"最后一条消息包含图片 URL: {img_url[:80]}...")
 
         for attempt in range(self.max_retries):
             try:
@@ -211,6 +226,7 @@ def create_llm_client(
     # 提供商配置
     PROVIDERS = {
         "open-router": "https://openrouter.ai/api/v1/chat/completions",
+        "open-router-vl": "https://openrouter.ai/api/v1/chat/completions",
         "siliconflow": "https://api.siliconflow.cn/v1/chat/completions",
     }
 
@@ -222,6 +238,7 @@ def create_llm_client(
     # 默认模型配置
     DEFAULT_MODELS = {
         "open-router": "z-ai/glm-4.7-flash",
+        "open-router-vl": "qwen/qwen2.5-vl-32b-instruct",
         "siliconflow": "Pro/zai-org/GLM-4.7",
     }
 

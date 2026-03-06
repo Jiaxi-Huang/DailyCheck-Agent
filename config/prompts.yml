@@ -143,6 +143,14 @@ messages:
     screen_info_prefix: "当前屏幕上的可用元素如下，请分析并采取下一步操作："
     task_prefix: "当前任务："
 
+  # VL model user message template (with screenshot)
+  vl_user_message:
+    step_prefix: "【第 {step} 回合】"
+    error_prefix: "⚠️ 上一步操作失败：{error_message}"
+    text_instruction: "请分析这张手机屏幕截图，并结合下方的 UI 元素信息，采取下一步操作。"
+    screen_info_prefix: "当前屏幕上的可用元素如下（供参考）："
+    task_prefix: "当前任务："
+
   # Fallback message (when LLM forgets to call tools)
   fallback_message: |
     你刚才只是回复了文本而没有调用任何工具。

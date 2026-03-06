@@ -24,6 +24,7 @@ class PromptBuilder:
         task_description: Task description string
         app_name: Target application name
         config_loader: ConfigLoader instance
+        vl_mode: Whether to use VL (Vision-Language) mode for image input
 
     Example:
         >>> builder = PromptBuilder(app_name="WeChat", task_description="Sign in")
@@ -37,6 +38,7 @@ class PromptBuilder:
         task_description: Optional[str] = None,
         app_name: Optional[str] = None,
         config_loader: Optional[ConfigLoader] = None,
+        vl_mode: bool = False,
     ):
         """初始化提示词构建器。
 
@@ -45,6 +47,7 @@ class PromptBuilder:
             task_description: 任务描述
             app_name: 目标应用名称
             config_loader: ConfigLoader 实例，如果为 None 则创建新实例
+            vl_mode: 是否启用 VL 模式（支持图像输入）
 
         Example:
             >>> # Use default config loader
@@ -56,6 +59,7 @@ class PromptBuilder:
         self.task_description = task_description
         self.app_name = app_name
         self.config_loader = config_loader or ConfigLoader()
+        self.vl_mode = vl_mode
 
         # Build or use custom system prompt
         if system_prompt:
@@ -109,6 +113,67 @@ class PromptBuilder:
             task_description=self.task_description,
         )
         return {"role": "user", "content": content}
+
+    def build_vl_user_message(
+        self,
+        screen_info: str,
+        screenshot_url: str,
+        step: Optional[int] = None,
+        error_message: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """构建 VL 模型用户消息（包含截图图像）。
+
+        Args:
+            screen_info: 屏幕信息字符串
+            screenshot_url: 屏幕截图的 URL（可以是 http:// 或 file:// 协议）
+            step: 当前步骤编号（可选）
+            error_message: 错误信息（如果上一步操作失败）
+
+        Returns:
+            用户消息字典，包含图像和文本内容：
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": "https://..."}},
+                    {"type": "text", "text": "..."}
+                ]
+            }
+
+        Example:
+            >>> builder = PromptBuilder(task_description="Sign in", vl_mode=True)
+            >>> msg = builder.build_vl_user_message(
+            ...     screen_info="button: (100, 200)",
+            ...     screenshot_url="https://example.com/screenshot.png",
+            ...     step=1
+            ... )
+        """
+        text_content = self.config_loader.format_vl_user_message(
+            screen_info=screen_info,
+            step=step,
+            error_message=error_message,
+            task_description=self.task_description,
+        )
+
+        # 记录图像 URL（不记录 base64 数据）
+        import logging
+        logger = logging.getLogger("dailycheck")
+        logger.debug(f"VL 模式：图像 URL = {screenshot_url[:80]}...")
+
+        return {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": screenshot_url
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": text_content
+                }
+            ]
+        }
 
     def build_tool_result_message(
         self, tool_name: str, tool_call_id: str, result: str

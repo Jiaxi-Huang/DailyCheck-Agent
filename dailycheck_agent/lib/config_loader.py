@@ -721,6 +721,64 @@ class ConfigLoader:
 
         return "\n".join(parts)
 
+    def format_vl_user_message(
+        self,
+        screen_info: str,
+        step: Optional[int] = None,
+        error_message: Optional[str] = None,
+        task_description: Optional[str] = None,
+    ) -> str:
+        """格式化 VL 模型用户消息（包含截图和 UI 信息）。
+
+        Args:
+            screen_info: 屏幕信息
+            step: 步骤编号
+            error_message: 错误信息
+            task_description: 任务描述
+
+        Returns:
+            格式化的用户消息字符串
+        """
+        prompt_config = self.load_prompt_config()
+        templates = prompt_config.get("messages", {}).get("vl_user_message", {})
+        parts: List[str] = []
+
+        if step is not None:
+            step_prefix = templates.get("step_prefix", "【第 {step} 回合】")
+            try:
+                parts.append(step_prefix.format(step=step))
+            except (KeyError, ValueError):
+                parts.append(f"【第 {step} 回合】")
+
+        if error_message:
+            error_prefix = templates.get(
+                "error_prefix", "⚠️ 上一步操作失败：{error_message}"
+            )
+            try:
+                parts.append(error_prefix.format(error_message=error_message))
+            except (KeyError, ValueError):
+                parts.append(f"⚠️ 上一步操作失败：{error_message}")
+
+        # VL model instruction
+        text_instruction = templates.get(
+            "text_instruction",
+            "请分析这张手机屏幕截图，并结合下方的 UI 元素信息，采取下一步操作。",
+        )
+        parts.append(text_instruction)
+
+        # Screen info (as reference)
+        screen_prefix = templates.get(
+            "screen_info_prefix",
+            "当前屏幕上的可用元素如下（供参考）：",
+        )
+        parts.append(f"\n{screen_prefix}\n{screen_info}")
+
+        if task_description:
+            task_prefix = templates.get("task_prefix", "当前任务：")
+            parts.append(f"\n{task_prefix}{task_description}")
+
+        return "\n".join(parts)
+
     def reload(self, force: bool = False) -> None:
         """重新加载所有配置。
 

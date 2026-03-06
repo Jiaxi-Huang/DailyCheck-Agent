@@ -36,6 +36,7 @@ class DailyCheckAgent:
         max_steps: int = 50,
         log_dir: Optional[str] = None,
         callback: Optional[callable] = None,
+        vl_mode: bool = False,
     ):
         """初始化 DailyCheck 代理。
 
@@ -48,10 +49,12 @@ class DailyCheckAgent:
             max_steps: 最大执行步骤数
             log_dir: 日志目录
             callback: 回调函数，用于 TUI 更新，接收 (event_type, data) 参数
+            vl_mode: 是否启用 VL 模式（视觉语言模型，支持截图输入）
         """
         self.task_name = task_name
         self.max_steps = max_steps
         self.callback = callback
+        self.vl_mode = vl_mode
 
         # 加载配置
         self.config_loader = ConfigLoader(config_dir)
@@ -67,18 +70,38 @@ class DailyCheckAgent:
 
         # 初始化屏幕渲染器
         self.adb_path = adb_path or self._get_default_adb_path()
+        
+        # 加载 API 配置获取图片托管 URL（如果配置了）
+        api_config = None
+        try:
+            api_config = self.config_loader.load_api_config(self.api_provider)
+            image_host_url = api_config.get("image_host_url")
+        except Exception:
+            image_host_url = None
+
+        # 获取截图保存目录，默认使用当前工作目录的 screenshot 文件夹
+        screenshot_dir = None
+        if api_config:
+            screenshot_dir = api_config.get("screenshot_dir")
+        if not screenshot_dir:
+            # 默认保存到当前工作目录的 screenshot 文件夹
+            screenshot_dir = str(Path.cwd() / "screenshot")
+
         self.renderer = ScreenRenderer(
             adb_path=self.adb_path,
             device_serial=device_serial,
             wait_time=2.0,
+            screenshot_dir=screenshot_dir,
+            image_host_url=image_host_url,
         )
 
         # 初始化提示词构建器
         self.prompt_builder = PromptBuilder(
             task_description=task_description,
             app_name=self.app_name,
+            vl_mode=vl_mode,
         )
-        
+
         # 初始化 LLM 客户端
         self.api_provider = api_provider or "open-router"
         self._init_llm_client()
@@ -222,6 +245,7 @@ class DailyCheckAgent:
         logger.info(f"开始执行任务：{self.task_name}")
         logger.info(f"目标应用：{self.app_name}")
         logger.info(f"最大步骤数：{self.max_steps}")
+        logger.info(f"VL 模式：{'已启用' if self.vl_mode else '未启用'}")
 
         # Notify TUI: task started
         if self.callback:
@@ -242,12 +266,36 @@ class DailyCheckAgent:
                 self.callback("task_error", {"error": str(e)})
             return False
 
-        self.messages.append(
-            self.prompt_builder.build_user_message(
-                screen_info=initial_screen,
-                step=0,
+        # 根据 VL 模式构建不同的用户消息
+        if self.vl_mode:
+            # VL 模式：同时发送截图和 UI 信息
+            try:
+                screenshot_url = self.renderer.get_screenshot_url()
+                logger.info(f"VL 模式：已获取截图，URL = {screenshot_url}")
+
+                user_message = self.prompt_builder.build_vl_user_message(
+                    screen_info=initial_screen,
+                    screenshot_url=screenshot_url,
+                    step=0,
+                )
+                self.messages.append(user_message)
+                logger.info("VL 模式：已构建用户消息并添加到历史")
+            except Exception as e:
+                logger.warning(f"VL 模式获取截图失败：{e}，回退到普通模式")
+                self.messages.append(
+                    self.prompt_builder.build_user_message(
+                        screen_info=initial_screen,
+                        step=0,
+                    )
+                )
+        else:
+            # 普通模式：只发送 UI 信息
+            self.messages.append(
+                self.prompt_builder.build_user_message(
+                    screen_info=initial_screen,
+                    step=0,
+                )
             )
-        )
 
         # 主循环
         task_completed = False
@@ -333,13 +381,35 @@ class DailyCheckAgent:
                 logger.error(f"执行失败：{e}")
                 last_error = str(e)
                 # 继续尝试
-                self.messages.append(
-                    self.prompt_builder.build_user_message(
-                        screen_info="错误：" + str(e),
-                        step=self._current_step,
-                        error_message=str(e),
+                if self.vl_mode:
+                    # VL 模式：尝试获取截图和 UI 信息
+                    try:
+                        screenshot_url = self.renderer.get_screenshot_url()
+                        self.messages.append(
+                            self.prompt_builder.build_vl_user_message(
+                                screen_info="错误：" + str(e),
+                                screenshot_url=screenshot_url,
+                                step=self._current_step,
+                                error_message=str(e),
+                            )
+                        )
+                    except Exception:
+                        # 回退到普通模式
+                        self.messages.append(
+                            self.prompt_builder.build_user_message(
+                                screen_info="错误：" + str(e),
+                                step=self._current_step,
+                                error_message=str(e),
+                            )
+                        )
+                else:
+                    self.messages.append(
+                        self.prompt_builder.build_user_message(
+                            screen_info="错误：" + str(e),
+                            step=self._current_step,
+                            error_message=str(e),
+                        )
                     )
-                )
 
         # 循环结束检查
         if not task_completed:
@@ -376,6 +446,7 @@ def run_agent(
     device_serial: Optional[str] = None,
     api_provider: Optional[str] = None,
     max_steps: int = 50,
+    vl_mode: bool = False,
 ):
     """便捷函数，运行代理执行指定任务。
 
@@ -385,6 +456,7 @@ def run_agent(
         device_serial: 设备序列号
         api_provider: API 提供商
         max_steps: 最大步骤数
+        vl_mode: 是否启用 VL 模式（视觉语言模型，支持截图输入）
 
     Returns:
         任务是否成功完成
@@ -395,5 +467,6 @@ def run_agent(
         device_serial=device_serial,
         api_provider=api_provider,
         max_steps=max_steps,
+        vl_mode=vl_mode,
     )
     return agent.run()

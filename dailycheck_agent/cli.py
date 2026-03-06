@@ -115,6 +115,10 @@ def main():
         help="最大执行步骤数，默认：50"
     )
     parser.add_argument(
+        "--vl-mode", action="store_true", dest="vl_mode",
+        help="启用 VL 模式（视觉语言模型，支持截图输入）"
+    )
+    parser.add_argument(
         "--config-dir", dest="config_dir", default=f"{Path.cwd()}/config/",
         help="配置文件目录"
     )
@@ -263,6 +267,7 @@ def main():
                 config_dir=config_dir,
                 max_steps=max_steps,
                 callback=tui_callback,
+                vl_mode=args.vl_mode,
             )
             success = agent.run()
             results.append((task_name, success))

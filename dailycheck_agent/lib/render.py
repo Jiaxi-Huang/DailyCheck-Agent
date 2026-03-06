@@ -1,8 +1,13 @@
-"""屏幕信息渲染模块 - 从 ADB 获取并渲染屏幕 UI 信息。"""
+"""屏幕渲染模块 - 从 ADB 获取并渲染屏幕 UI 信息。"""
 
+import base64
+import logging
+import os
 import subprocess
 import time
+import uuid
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -14,6 +19,8 @@ class ScreenRenderer:
         adb_path: str,
         device_serial: Optional[str] = None,
         wait_time: float = 2.0,
+        screenshot_dir: Optional[str] = None,
+        image_host_url: Optional[str] = None,
     ):
         """初始化屏幕渲染器。
 
@@ -21,11 +28,18 @@ class ScreenRenderer:
             adb_path: ADB 可执行文件路径
             device_serial: 设备序列号，如果为 None 则使用默认连接设备
             wait_time: 执行操作后的等待时间（秒）
+            screenshot_dir: 截图保存目录，如果为 None 则使用当前工作目录的 screenshot 文件夹
+            image_host_url: 图片托管服务 URL 前缀，用于将本地截图转换为可访问 URL
         """
         self.adb_path = adb_path
         self.device_serial = device_serial
         self.wait_time = wait_time
         self._screen_bounds: Optional[Tuple[int, int]] = None
+        # 如果 screenshot_dir 为 None，默认使用当前工作目录的 screenshot 文件夹
+        self._screenshot_dir = Path(screenshot_dir) if screenshot_dir else Path.cwd() / "screenshot"
+        self._image_host_url = image_host_url
+        self._screenshot_count = 0
+        self._logger = logging.getLogger("dailycheck")
 
     def _run_adb(self, command: List[str], shell: bool = False) -> subprocess.CompletedProcess:
         """运行 ADB 命令。
@@ -327,3 +341,113 @@ class ScreenRenderer:
 
         except Exception:
             return {"elements": [], "resolution": (0, 0)}
+
+    def _get_screenshot_path(self) -> Path:
+        """生成截图文件路径。
+        
+        Returns:
+            截图文件路径
+        """        
+        # 生成唯一文件名
+        self._screenshot_count += 1
+        filename = f"screenshot_{uuid.uuid4().hex[:8]}_{self._screenshot_count}.png"
+        return self._screenshot_dir / filename
+    
+    def capture_screenshot(self, save_path: Optional[str] = None) -> str:
+        """捕获当前屏幕截图并返回 base64 编码。
+
+        Args:
+            save_path: 可选的保存路径，如果提供则保存截图到该路径
+
+        Returns:
+            base64 编码的 PNG 图片字符串
+        """
+        try:
+            # 使用 screencap -p 获取 PNG 格式的截图
+            result = self._run_adb(["shell", "screencap -p"])
+            png_data = result.stdout
+
+            # 如果需要保存到文件
+            if save_path:
+                path = Path(save_path)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "wb") as f:
+                    f.write(png_data)
+
+            # 返回 base64 编码
+            return base64.b64encode(png_data).decode("utf-8")
+
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.decode("utf-8", errors="ignore") if e.stderr else str(e)
+            raise RuntimeError(f"截图失败：{error_msg}")
+        except Exception as e:
+            raise RuntimeError(f"截图失败：{e}")
+    
+    def capture_screenshot_to_file(self, save_path: Optional[str] = None) -> Path:
+        """捕获当前屏幕截图并保存到文件。
+        
+        Args:
+            save_path: 可选的保存路径，如果为 None 则自动生成路径
+            
+        Returns:
+            截图文件路径
+        """
+        try:
+            # 使用 screencap -p 获取 PNG 格式的截图
+            result = self._run_adb(["shell", "screencap -p"])
+            png_data = result.stdout
+            
+            # 确定保存路径
+            path = Path(save_path) if save_path else self._get_screenshot_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # 保存截图
+            with open(path, "wb") as f:
+                f.write(png_data)
+            
+            self._logger.debug(f"截图已保存到：{path}")
+            return path
+            
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.decode("utf-8", errors="ignore") if e.stderr else str(e)
+            raise RuntimeError(f"截图失败：{error_msg}")
+        except Exception as e:
+            raise RuntimeError(f"截图失败：{e}")
+    
+    def get_screenshot_url(self, save_path: Optional[str] = None) -> str:
+        """获取当前屏幕截图的 URL。
+        
+        如果配置了 image_host_url，则返回完整 URL；否则返回 file:// 协议的本地路径。
+        
+        Args:
+            save_path: 可选的保存路径，如果为 None 则自动生成路径
+            
+        Returns:
+            截图 URL 字符串
+        """
+        # 保存截图到文件
+        file_path = self.capture_screenshot_to_file(save_path)
+        
+        # 如果配置了图片托管服务 URL，则构建完整 URL
+        if self._image_host_url:
+            # 假设 image_host_url 是类似 https://example.com/images/ 的形式
+            # 我们使用文件名构建完整 URL
+            url = f"{self._image_host_url.rstrip('/')}/{file_path.name}"
+            self._logger.debug(f"截图 URL: {url}")
+            return url
+        
+        # 否则返回 file:// 协议的本地路径
+        # 注意：这只在本地测试时有用，实际 API 无法访问本地文件
+        url = f"file://{file_path.absolute()}"
+        self._logger.debug(f"本地截图 URL: {url}")
+        return url
+
+    def get_screenshot_base64(self) -> str:
+        """获取当前屏幕截图的 base64 编码。
+        
+        注意：此方法会导致日志文件过大，建议使用 get_screenshot_url 替代。
+
+        Returns:
+            base64 编码的 PNG 图片字符串
+        """
+        return self.capture_screenshot()
